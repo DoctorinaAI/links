@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use sqlx::migrate::MigrateDatabase;
-use sqlx::{Pool, Postgres, Sqlite, sqlite::SqlitePoolOptions};
+use sqlx::{Pool, Postgres, Sqlite, postgres::PgPoolOptions, sqlite::SqlitePoolOptions};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::{path::Path, time::Duration};
@@ -146,8 +146,50 @@ impl Database {
 
     /// Create a new PostgreSQL database connection
     async fn new_postgres(url: &str) -> Result<Self> {
-        // Connect to database
-        let pool = Pool::<Postgres>::connect(url)
+        // Connect to database with optimized pool settings
+        // PostgreSQL can handle many more concurrent connections than SQLite
+        // Typical production settings for medium-high load web servers
+        let pool = PgPoolOptions::new()
+            // PostgreSQL can efficiently handle 20-100+ connections
+            // For high load scenarios, start with more connections
+            .max_connections(50)
+            .min_connections(5)
+            // Connection timeout - how long to wait for an available connection
+            .acquire_timeout(Duration::from_secs(10))
+            // Idle connection timeout - close idle connections after 10 minutes
+            .idle_timeout(Duration::from_secs(600))
+            // Maximum connection lifetime - recycle connections after 30 minutes
+            // This helps prevent issues with stale connections
+            .max_lifetime(Duration::from_secs(1800))
+            // Test connections before using them
+            .test_before_acquire(true)
+            // Configure connection-level settings
+            .after_connect(|conn, _meta| {
+                Box::pin(async move {
+                    // Set statement timeout to prevent long-running queries
+                    sqlx::query("SET statement_timeout = '30s';")
+                        .execute(&mut *conn)
+                        .await?;
+
+                    // Set search path if needed
+                    sqlx::query("SET search_path TO public;")
+                        .execute(&mut *conn)
+                        .await?;
+
+                    // Set timezone to UTC for consistency
+                    sqlx::query("SET timezone = 'UTC';")
+                        .execute(&mut *conn)
+                        .await?;
+
+                    // Enable connection pooling optimizations
+                    sqlx::query("SET lock_timeout = '10s';")
+                        .execute(&mut *conn)
+                        .await?;
+
+                    Ok(())
+                })
+            })
+            .connect(url)
             .await
             .context("Failed to connect to PostgreSQL database")?;
 
