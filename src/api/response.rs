@@ -156,6 +156,8 @@ macro_rules! api_success {
     };
 }
 
+/// Creates an error API response with a custom code and message.
+/// Creates an error API response with a custom code, message, and status code.
 #[macro_export]
 macro_rules! api_error {
     ($code:expr, $message:expr) => {
@@ -166,6 +168,7 @@ macro_rules! api_error {
     };
 }
 
+/// Creates a file API response with the provided content, filename, and content type.
 #[macro_export]
 macro_rules! api_file {
     ($content:expr, $filename:expr, $content_type:expr) => {
