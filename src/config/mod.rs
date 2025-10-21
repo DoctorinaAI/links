@@ -79,12 +79,12 @@ pub struct Config {
     #[arg(
         short = 'd',
         long,
-        env = "CONFIG_DATABASE",
+        env = "CONFIG_DATABASE_CONNECTION",
         aliases = ["db", "sqlite", "sqlite3", "sql", "storage"],
         default_value = "sqlite://data/links.db?mode=rwc",
-        help = "SQLite connection URL (e.g. sqlite://links.db or sqlite://data/links.db?mode=rwc)"
+        help = "Database connection URL (e.g. sqlite://links.db or postgres://user:pass@host/db)"
     )]
-    pub database: String,
+    pub database_connection: String,
     /*
     /// Secret admin API key for API authentication (CLI > ENV > default)
     //#[arg(
@@ -102,7 +102,7 @@ pub struct Config {
     /// e.g. 123456789, 987654321
     #[arg(
         short = 'c',
-        long,
+        long = "chats",
         env = "CONFIG_CHATS",
         aliases = ["chat", "groups", "channels", "monitored", "watched", "observed"],
         help = "Chats to monitor (e.g. 123456789, 987654321)",

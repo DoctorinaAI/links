@@ -6,4 +6,4 @@ pub(crate) mod routes_private;
 pub(crate) mod routes_public;
 pub(crate) mod state;
 
-pub use server::Server;
+pub use server::{Server, ServerConfig};

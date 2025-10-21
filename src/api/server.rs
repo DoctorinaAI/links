@@ -9,13 +9,19 @@ use crate::api::{routes_private, routes_public, state::ApiState};
 use tokio::net::TcpListener;
 use tracing::info;
 
+pub struct ServerConfig {
+    pub address: String,
+    pub fingerprint_service: crate::services::FingerprintService,
+    pub short_link_service: crate::services::ShortLinkService,
+}
+
 pub struct Server {
-    address: String,
+    config: ServerConfig,
 }
 
 impl Server {
-    pub fn new(address: String) -> Self {
-        Self { address }
+    pub fn new(config: ServerConfig) -> Self {
+        Self { config }
     }
 
     /// Run the HTTP API server with graceful shutdown
@@ -24,7 +30,7 @@ impl Server {
         shutdown_signal: impl std::future::Future<Output = ()> + Send + 'static,
     ) {
         // Try to parse the address from the configuration
-        let addr: SocketAddr = self.address.parse().expect("invalid address format");
+        let addr: SocketAddr = self.config.address.parse().expect("invalid address format");
 
         // Listen on the specified address and handle incoming connections
         let listener = TcpListener::bind(&addr)

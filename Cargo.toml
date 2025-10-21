@@ -46,6 +46,7 @@ clap = { version = "4.5.50", features = ["derive", "env"] }
 # Database
 sqlx = { version = "0.8.6", features = [
     "sqlite",
+    "postgres",
     "runtime-tokio-native-tls",
     "migrate",
 ] }

@@ -2,7 +2,7 @@ use clap::Parser;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
-use links::{api, config};
+use links::{api, config, database, services};
 use tracing::{info /* debug, trace, warn, error */};
 use tracing_appender::rolling;
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
@@ -17,10 +17,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.environment.as_deref().unwrap_or("production"),
     );
 
+    info!("Starting server v{}", config::VERSION);
+
+    // Initialize database
+    info!("Connecting to database: {}", config.database_connection);
+    let db_type = database::DatabaseType::from_connection_string(&config.database_connection)?;
+    let db = database::create_database(&config.database_connection, Some(db_type)).await?;
+
+    // Run migrations
+    db.migrate().await?;
+
+    // Health check
+    db.health_check().await?;
+
+    info!("Spawning services");
+
     // Channels for graceful shutdowns
     let (api_tx, api_rx) = oneshot::channel::<()>();
-
-    info!("Starting server v{}", config::VERSION);
 
     // Spawn API service
     let api_handle: tokio::task::JoinHandle<()>;
@@ -28,8 +41,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let api_shutdown = async {
             let _ = api_rx.await;
         };
+        let db_clone = db.clone();
         api_handle = tokio::spawn(async move {
-            let server = api::Server::new(config.address.clone());
+            let fingerprint_service = services::FingerprintService::new(db_clone.clone());
+            let short_link_service = services::ShortLinkService::new(db_clone.clone());
+            let server = api::Server::new(api::ServerConfig {
+                address: config.address.clone(),
+                fingerprint_service,
+                short_link_service,
+            });
             server.start(api_shutdown).await;
         });
     }
@@ -41,6 +61,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .expect("failed to listen for shutdown");
         tracing::info!("shutdown signal received");
     }
+
+    info!("Shutting down services");
+    let _ = api_tx.send(());
+
+    // Shutdown database
+    info!("Closing database connection");
+    db.close().await;
 
     // Wait for tasks to complete
     let _ = api_handle.await;
