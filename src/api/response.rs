@@ -5,10 +5,16 @@ use axum::{
 };
 use serde::Serialize;
 
+/// Status constant for successful responses
+const STATUS_OK: &str = "ok";
+
+/// Status constant for error responses
+const STATUS_ERROR: &str = "error";
+
 /// Basic structure for successful API responses
 #[derive(Serialize)]
 pub struct ApiResponse<T> {
-    pub ok: bool,
+    pub status: &'static str,
     pub data: T,
 }
 
@@ -22,7 +28,7 @@ pub struct ApiError {
 /// Standard error response
 #[derive(Serialize)]
 pub struct ApiErrorResponse {
-    pub ok: bool,
+    pub status: &'static str,
     pub error: ApiError,
 }
 
@@ -97,7 +103,10 @@ where
     fn into_response(self) -> Response {
         match self {
             ApiResult::Success(data) => {
-                let response = ApiResponse { ok: true, data };
+                let response = ApiResponse {
+                    status: STATUS_OK,
+                    data,
+                };
                 Json(response).into_response()
             }
             ApiResult::Error {
@@ -106,7 +115,7 @@ where
                 status,
             } => {
                 let response = ApiErrorResponse {
-                    ok: false,
+                    status: STATUS_ERROR,
                     error: ApiError { code, message },
                 };
                 (status, Json(response)).into_response()
