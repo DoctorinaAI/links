@@ -1,5 +1,5 @@
 use crate::database::SharedDatabase;
-
+#[derive(Clone)]
 pub struct ShortLinkService {
     db: SharedDatabase,
 }

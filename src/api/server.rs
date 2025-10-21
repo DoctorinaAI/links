@@ -51,7 +51,10 @@ impl Server {
             .nest("/api/admin", api_routes_protected)
             // TODO: Add fallback route
             // .fallback(routes_public::public_not_found)
-            .with_state(ApiState {});
+            .with_state(ApiState {
+                fingerprint_service: self.config.fingerprint_service.clone(),
+                short_link_service: self.config.short_link_service.clone(),
+            });
 
         info!(%addr, "Starting api server");
 

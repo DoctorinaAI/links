@@ -1,5 +1,6 @@
 use crate::database::SharedDatabase;
 
+#[derive(Clone)]
 pub struct FingerprintService {
     db: SharedDatabase,
 }
