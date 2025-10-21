@@ -80,12 +80,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Initialize logging with configurable levels and formats
 /// This function sets up the logging system using `tracing` and `tracing_subscriber`.
 fn init_logging(log_level: &str, environment: &str) {
-    // 1) Фильтр: RUST_LOG=debug или APP_LOG=info
+    // 1) Filter: RUST_LOG=debug или APP_LOG=info
     /* let env_filter = EnvFilter::try_from_env("APP_LOG")
     .or_else(|_| EnvFilter::try_from_default_env())
     .unwrap_or_else(|_| EnvFilter::new("info")); */
 
-    // 1) Фильтр: RUST_LOG=debug или APP_LOG=info
+    // 1) Filter: RUST_LOG=debug или APP_LOG=info
     let env_filter = EnvFilter::builder()
         .with_default_directive(
             log_level
@@ -94,23 +94,23 @@ fn init_logging(log_level: &str, environment: &str) {
         )
         .from_env_lossy();
 
-    // 2) Консольный формат
+    // 2) Console layer: human-readable output to stdout
     let console_layer = fmt::layer()
         .with_target(false) // не печатать имя модуля
         .with_ansi(true)
         .with_thread_ids(true);
 
-    // 3) Файловый аппендер: новый файл каждый день
+    // 3) File layer: JSON format to rolling file appender
     let file_appender = rolling::RollingFileAppender::builder()
-        .rotation(rolling::Rotation::DAILY) // ежедневная ротация
-        .max_log_files(7) // хранить не более 7 файлов
-        .build("logs") // каталог для логов
+        .rotation(rolling::Rotation::DAILY) // every day a new file
+        .max_log_files(7) // keep logs for 7 days
+        .build("logs") // directory for logs
         .expect("Failed to create file appender");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
     let file_layer = fmt::layer()
-        .with_ansi(environment != "production") // ANSI в dev, plain в prod
+        .with_ansi(environment != "production") // ANSI in dev, plain in prod
         .with_writer(non_blocking)
-        .json(); // JSON-формат для парсинга
+        .json(); // JSON format for parsing
 
     // 4) Инициализация глобального подписчика
     tracing_subscriber::registry()
