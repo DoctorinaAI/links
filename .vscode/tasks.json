@@ -2,6 +2,44 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "rust:install",
+            "detail": "Install Rust toolchain using rustup",
+            "icon": {
+                "color": "terminal.ansiYellow",
+                "id": "wrench"
+            },
+            "type": "shell",
+            "windows": {
+                "command": "powershell",
+                "args": [
+                    "-Command",
+                    "Invoke-WebRequest -Uri https://win.rustup.rs/x86_64 -OutFile rustup-init.exe; .\\rustup-init.exe -y; Remove-Item rustup-init.exe"
+                ]
+            },
+            "osx": {
+                "command": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
+            },
+            "linux": {
+                "command": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "none",
+                "isDefault": false
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
             "label": "docker:build",
             "detail": "Build server using Docker.",
             "icon": {
