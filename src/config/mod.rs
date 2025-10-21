@@ -63,12 +63,12 @@ pub struct Config {
     pub log_level: String,
 
     /// Address to bind the server to (CLI > ENV > default)
-    /// e.g. 127.0.0.1:8080
+    /// e.g. 127.0.0.1:8000
     #[arg(
         short = 'a',
         long,
         env = "CONFIG_ADDRESS",
-        default_value = "0.0.0.0:8080",
+        default_value = "0.0.0.0:8000",
         aliases = ["host", "addr", "api", "connection"],
         help = "Address to bind the server to"
     )]

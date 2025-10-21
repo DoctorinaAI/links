@@ -1,7 +1,8 @@
 use clap::Parser;
 use std::sync::Arc;
+use tokio::sync::oneshot;
 
-use links::config;
+use links::{api, config};
 use tracing::{info /* debug, trace, warn, error */};
 use tracing_appender::rolling;
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
@@ -16,9 +17,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.environment.as_deref().unwrap_or("production"),
     );
 
+    // Channels for graceful shutdowns
+    let (api_tx, api_rx) = oneshot::channel::<()>();
+
     info!("Starting server v{}", config::VERSION);
 
-    // Your server code here
+    // Spawn API service
+    let api_handle: tokio::task::JoinHandle<()>;
+    {
+        let api_shutdown = async {
+            let _ = api_rx.await;
+        };
+        api_handle = tokio::spawn(async move {
+            let server = api::Server::new(config.address.clone());
+            server.start(api_shutdown).await;
+        });
+    }
+
+    // Wait for shutdown signal (Ctrl+C)
+    {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to listen for shutdown");
+        tracing::info!("shutdown signal received");
+    }
+
+    // Wait for tasks to complete
+    let _ = api_handle.await;
 
     Ok(())
 }

@@ -2,6 +2,8 @@
 name = "links"
 version = "0.0.1"
 description = "A simple link shortener service"
+repository = "https://github.com/DoctorinaAI/links"
+homepage = "https://doctorina.com"
 authors = ["Mike Matiunin <plugfox@gmail.com>"]
 license = "MIT"
 edition = "2024"
