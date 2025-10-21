@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.environment.as_deref().unwrap_or("production"),
     );
 
-    info!("Starting server v{}", config::VERSION);
+    info!("Starting Links Server v{}", config::VERSION);
 
     // Initialize database
     info!("Connecting to database: {}", config.database_connection);
