@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 //use crate::services::FingerprintService;
 //use crate::services::ShortLinkService;
@@ -9,10 +10,11 @@ use crate::api::{routes_private, routes_public, state::ApiState};
 use tokio::net::TcpListener;
 use tracing::info;
 
+/// Server configuration using Arc to avoid unnecessary cloning
 pub struct ServerConfig {
     pub address: String,
-    pub fingerprint_service: crate::services::FingerprintService,
-    pub short_link_service: crate::services::ShortLinkService,
+    pub fingerprint_service: Arc<crate::services::FingerprintService>,
+    pub short_link_service: Arc<crate::services::ShortLinkService>,
 }
 
 pub struct Server {

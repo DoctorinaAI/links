@@ -30,7 +30,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Health check
     db.health_check().await?;
 
-    info!("Spawning services");
+    info!("Spawning API task");
+
+    // Create services wrapped in Arc for efficient sharing
+    let fingerprint_service = Arc::new(services::FingerprintService::new(db.clone()));
+    let short_link_service = Arc::new(services::ShortLinkService::new(db.clone()));
 
     // Channels for graceful shutdowns
     let (api_tx, api_rx) = oneshot::channel::<()>();
@@ -41,10 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let api_shutdown = async {
             let _ = api_rx.await;
         };
-        let db_clone = db.clone();
         api_handle = tokio::spawn(async move {
-            let fingerprint_service = services::FingerprintService::new(db_clone.clone());
-            let short_link_service = services::ShortLinkService::new(db_clone.clone());
             let server = api::Server::new(api::ServerConfig {
                 address: config.address.clone(),
                 fingerprint_service,
@@ -56,10 +57,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Wait for shutdown signal (Ctrl+C)
     {
+        info!("Press Ctrl+C to shut down");
         tokio::signal::ctrl_c()
             .await
             .expect("failed to listen for shutdown");
-        tracing::info!("shutdown signal received");
+        tracing::debug!("shutdown signal received");
     }
 
     info!("Shutting down services");
