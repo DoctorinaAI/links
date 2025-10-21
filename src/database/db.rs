@@ -206,6 +206,13 @@ impl Database {
                     .run(pool)
                     .await
                     .context("Failed to run SQLite migrations")?;
+
+                // VACUUM the database to optimize it
+                debug!("Running VACUUM on the database");
+                sqlx::query("VACUUM")
+                    .execute(pool)
+                    .await
+                    .context("Failed to VACUUM SQLite database")?;
             }
             Database::Postgres(pool) => {
                 debug!("Running PostgreSQL migrations");
