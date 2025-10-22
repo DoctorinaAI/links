@@ -143,8 +143,8 @@ impl Server {
             .route("/version", get(routes_public::get_about))
             .route("/404", get(routes_public::not_found))
             // Public short link routes
-            .route("/link/:slug", get(routes_public::get_resolve_short_link))
-            .route("/click/:slug", post(routes_public::post_click_short_link))
+            .route("/link/{slug}", get(routes_public::get_resolve_short_link))
+            .route("/click/{slug}", post(routes_public::post_click_short_link))
     }
 
     fn private_routes() -> Router<ApiState> {
@@ -153,9 +153,9 @@ impl Server {
             // Admin short link management routes
             .route("/links", get(routes_private::get_list_short_links))
             .route("/links", post(routes_private::post_create_short_link))
-            .route("/links/:slug", get(routes_private::get_short_link))
-            .route("/links/:slug", put(routes_private::put_update_short_link))
-            .route("/links/:slug", delete(routes_private::delete_short_link))
-            .route("/links/:slug/stats", get(routes_private::get_click_stats))
+            .route("/links/{slug}", get(routes_private::get_short_link))
+            .route("/links/{slug}", put(routes_private::put_update_short_link))
+            .route("/links/{slug}", delete(routes_private::delete_short_link))
+            .route("/links/{slug}/stats", get(routes_private::get_click_stats))
     }
 }
