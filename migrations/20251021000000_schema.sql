@@ -1,4 +1,4 @@
--- Create short_links table
+/* -- Create short_links table
 CREATE TABLE IF NOT EXISTS short_links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     short_code TEXT NOT NULL UNIQUE,
@@ -39,3 +39,4 @@ CREATE TABLE IF NOT EXISTS clicks (
 CREATE INDEX IF NOT EXISTS idx_clicks_short_link_id ON clicks(short_link_id);
 CREATE INDEX IF NOT EXISTS idx_clicks_fingerprint ON clicks(fingerprint);
 CREATE INDEX IF NOT EXISTS idx_clicks_clicked_at ON clicks(clicked_at);
+ */
