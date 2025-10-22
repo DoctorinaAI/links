@@ -80,12 +80,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Initialize logging with configurable levels and formats
 /// This function sets up the logging system using `tracing` and `tracing_subscriber`.
 fn init_logging(log_level: &str, environment: &str) {
-    // 1) Filter: RUST_LOG=debug или APP_LOG=info
-    /* let env_filter = EnvFilter::try_from_env("APP_LOG")
-    .or_else(|_| EnvFilter::try_from_default_env())
-    .unwrap_or_else(|_| EnvFilter::new("info")); */
+    /* let env_filter = EnvFilter::builder().parse_lossy(log_level); */
 
-    // 1) Filter: RUST_LOG=debug или APP_LOG=info
+    // 1) Filter: RUST_LOG=debug or CONFIG_LOGS=info
+    // If RUST_LOG is not set, use the provided log_level from configuration
     let env_filter = EnvFilter::builder()
         .with_default_directive(
             log_level
