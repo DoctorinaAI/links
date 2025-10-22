@@ -70,33 +70,45 @@ You can configure the application via **environment variables** or **command-lin
 Create a `.env` file in the project root:
 
 ```env
-# Server Configuration
-CONFIG_ENVIRONMENT=production
+# Environment configuration template for the Links application
+CONFIG_ENVIRONMENT=development
+
+# Logging level: trace, debug, info, warn, error
 CONFIG_LOGS=info
+
+# Server address and port to bind to
 CONFIG_ADDRESS=0.0.0.0:8000
 
-# Database (choose one)
+# Database connection string
+# Could be either SQLite or PostgreSQL
+# Examples:
+#   - SQLite: sqlite://data/links.db?mode=rwc
+#   - PostgreSQL: postgresql://user:password@localhost/dbname
 CONFIG_DATABASE_CONNECTION=sqlite://data/links.db?mode=rwc
-# CONFIG_DATABASE_CONNECTION=postgresql://user:password@localhost/links
 
-# Google OAuth
+# Google OAuth Configuration (REQUIRED)
+# Get your Client ID from https://console.cloud.google.com/apis/credentials
+# This is required for the server to start
 CONFIG_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 
-# Email Access Control (comma-separated, supports wildcards)
-# Leave empty or omit to allow all authenticated Google users
+# Email Access Control (OPTIONAL)
+# Comma-separated list of allowed email addresses or domain wildcards
+# Leave empty to allow all authenticated Google users
 # Examples:
-#   CONFIG_ALLOWED_EMAILS=admin@example.com                    # Single email
-#   CONFIG_ALLOWED_EMAILS=*@doctorina.com                      # All emails from domain
-#   CONFIG_ALLOWED_EMAILS=admin@example.com,*@company.com      # Multiple patterns
-CONFIG_ALLOWED_EMAILS=*@doctorina.com,admin@example.com
+#   Single email:     CONFIG_ALLOWED_EMAILS=admin@example.com
+#   Domain wildcard:  CONFIG_ALLOWED_EMAILS=*@example.com
+#   Multiple:         CONFIG_ALLOWED_EMAILS=admin@example.com,*@company.com
+#   All users:        CONFIG_ALLOWED_EMAILS=
+CONFIG_ALLOWED_EMAILS=*@doctorina.com,plugfox@gmail.com
 
-# CORS Allowed Origins (comma-separated)
+# CORS Configuration (OPTIONAL)
+# Comma-separated list of allowed origins for Cross-Origin requests
 # Leave empty to allow all origins (permissive mode - recommended for development)
 # For production, specify exact origins for better security
 # Examples:
-#   CONFIG_CORS_ORIGINS=                                        # Allow all (permissive)
-#   CONFIG_CORS_ORIGINS=https://example.com                     # Single origin
-#   CONFIG_CORS_ORIGINS=https://example.com,https://app.com     # Multiple origins
+#   All origins:      CONFIG_CORS_ORIGINS=
+#   Single origin:    CONFIG_CORS_ORIGINS=https://example.com
+#   Multiple:         CONFIG_CORS_ORIGINS=https://example.com,https://app.example.com
 CONFIG_CORS_ORIGINS=
 ```
 
