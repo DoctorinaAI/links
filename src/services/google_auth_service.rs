@@ -60,13 +60,22 @@ struct CachedKey {
     expires_at: Instant,
 }
 
+/// Cached token validation result
+#[derive(Clone)]
+struct CachedToken {
+    claims: GoogleClaims,
+    expires_at: Instant,
+}
+
 /// Google JWT validator service
 #[derive(Clone)]
 pub struct GoogleAuthService {
     client: Client,
     client_id: String,
     keys_cache: Arc<RwLock<HashMap<String, CachedKey>>>,
-    cache_duration: Duration,
+    tokens_cache: Arc<RwLock<HashMap<String, CachedToken>>>,
+    keys_cache_duration: Duration,
+    tokens_cache_duration: Duration,
     jwks_url: String,
 }
 
@@ -80,13 +89,27 @@ impl GoogleAuthService {
                 .expect("Failed to create HTTP client"),
             client_id,
             keys_cache: Arc::new(RwLock::new(HashMap::new())),
-            cache_duration: Duration::from_secs(3600), // Cache keys for 1 hour
+            tokens_cache: Arc::new(RwLock::new(HashMap::new())),
+            keys_cache_duration: Duration::from_secs(3600), // Cache keys for 1 hour
+            tokens_cache_duration: Duration::from_secs(300), // Cache tokens for 5 minutes
             jwks_url: "https://www.googleapis.com/oauth2/v3/certs".to_string(),
         }
     }
 
-    /// Validate a Google ID Token (JWT)
+    /// Validate a Google ID Token (JWT) with caching
     pub async fn validate_token(&self, token: &str) -> Result<GoogleClaims> {
+        // Check token cache first
+        {
+            let cache = self.tokens_cache.read().await;
+            if let Some(cached) = cache.get(token)
+                && cached.expires_at > Instant::now()
+            {
+                debug!("Using cached token validation result");
+                return Ok(cached.claims.clone());
+            }
+        }
+
+        // Validate token (cache miss)
         // Decode header to get the key ID (kid)
         let header = decode_header(token).context("Failed to decode JWT header")?;
 
@@ -124,6 +147,40 @@ impl GoogleAuthService {
             "Successfully validated Google JWT"
         );
 
+        // Cache the validated token
+        {
+            let mut cache = self.tokens_cache.write().await;
+
+            // Clean up expired entries to prevent memory leak
+            cache.retain(|_, v| v.expires_at > Instant::now());
+
+            // Limit cache size to prevent abuse (max 1000 tokens)
+            if cache.len() > 1000 {
+                // Remove oldest entries
+                if let Some(oldest_key) = cache
+                    .iter()
+                    .min_by_key(|(_, v)| v.expires_at)
+                    .map(|(k, _)| k.clone())
+                {
+                    cache.remove(&oldest_key);
+                }
+            }
+
+            cache.insert(
+                token.to_string(),
+                CachedToken {
+                    claims: claims.clone(),
+                    expires_at: Instant::now() + self.tokens_cache_duration,
+                },
+            );
+
+            debug!(
+                cache_size = cache.len(),
+                ttl_secs = self.tokens_cache_duration.as_secs(),
+                "Cached token validation result"
+            );
+        }
+
         Ok(claims)
     }
 
@@ -159,7 +216,7 @@ impl GoogleAuthService {
 
         // Cache all keys
         let mut cache = self.keys_cache.write().await;
-        let expires_at = Instant::now() + self.cache_duration;
+        let expires_at = Instant::now() + self.keys_cache_duration;
 
         for key in &jwks.keys {
             let key_for_cache = DecodingKey::from_rsa_components(&key.n, &key.e)?;
@@ -174,7 +231,7 @@ impl GoogleAuthService {
 
         info!(
             keys_cached = jwks.keys.len(),
-            cache_duration_secs = self.cache_duration.as_secs(),
+            cache_duration_secs = self.keys_cache_duration.as_secs(),
             "Cached Google public keys"
         );
 
@@ -209,10 +266,31 @@ impl GoogleAuthService {
     }
 
     /// Clear the keys cache (useful for testing or forced refresh)
-    pub async fn clear_cache(&self) {
+    pub async fn clear_keys_cache(&self) {
         let mut cache = self.keys_cache.write().await;
         cache.clear();
         info!("Cleared Google public keys cache");
+    }
+
+    /// Clear the tokens cache (useful for testing or forced refresh)
+    pub async fn clear_tokens_cache(&self) {
+        let mut cache = self.tokens_cache.write().await;
+        cache.clear();
+        info!("Cleared Google tokens cache");
+    }
+
+    /// Clear both keys and tokens caches
+    pub async fn clear_all_caches(&self) {
+        self.clear_keys_cache().await;
+        self.clear_tokens_cache().await;
+        info!("Cleared all Google auth caches");
+    }
+
+    /// Get cache statistics
+    pub async fn cache_stats(&self) -> (usize, usize) {
+        let keys_count = self.keys_cache.read().await.len();
+        let tokens_count = self.tokens_cache.read().await.len();
+        (keys_count, tokens_count)
     }
 
     /// Get the configured Google Client ID
@@ -237,6 +315,17 @@ mod tests {
             service.jwks_url,
             "https://www.googleapis.com/oauth2/v3/certs"
         );
+        assert_eq!(service.keys_cache_duration, Duration::from_secs(3600));
+        assert_eq!(service.tokens_cache_duration, Duration::from_secs(300));
+    }
+
+    #[tokio::test]
+    async fn test_cache_stats() {
+        let service =
+            GoogleAuthService::new("test-client-id.apps.googleusercontent.com".to_string());
+        let (keys, tokens) = service.cache_stats().await;
+        assert_eq!(keys, 0);
+        assert_eq!(tokens, 0);
     }
 
     // Note: Integration tests would require a real Google JWT token

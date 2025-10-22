@@ -434,17 +434,72 @@
             }
         },
         {
-            "label": "dev:check",
-            "detail": "Quick development check: format, clippy, and test",
-            "icon": {
-                "color": "terminal.ansiMagenta",
-                "id": "checklist"
-            },
+            "label": "dev:format",
+            "detail": "Format code with cargo fmt",
             "type": "shell",
-            "command": "powershell",
+            "command": "cargo",
             "args": [
-                "-Command",
-                "cargo fmt; if ($LASTEXITCODE -eq 0) { cargo clippy --all-targets --all-features; if ($LASTEXITCODE -eq 0) { cargo test -- --nocapture } }"
+                "fmt",
+                "--all"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "none",
+                "isDefault": false
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "dev:clippy",
+            "detail": "Run clippy linter with all checks",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "clippy",
+                "--all-targets",
+                "--all-features",
+                "--",
+                "-D",
+                "warnings"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "none",
+                "isDefault": false
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "dev:test",
+            "detail": "Run all tests with output",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "test",
+                "--",
+                "--nocapture"
             ],
             "options": {
                 "cwd": "${workspaceFolder}",
@@ -454,12 +509,39 @@
                 }
             },
             "group": {
-                "kind": "build",
+                "kind": "none",
                 "isDefault": false
             },
             "problemMatcher": [
                 "$rustc"
             ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "dev:check",
+            "detail": "Complete development check: format, clippy, and test",
+            "icon": {
+                "color": "terminal.ansiMagenta",
+                "id": "checklist"
+            },
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "dev:format",
+                "dev:clippy",
+                "dev:test"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": [],
             "presentation": {
                 "echo": true,
                 "reveal": "always",

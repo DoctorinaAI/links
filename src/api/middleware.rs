@@ -69,6 +69,7 @@ impl RateLimitState {
     }
 }
 
+/// Check for admin authentication via a static secret token
 pub async fn auth_middleware(
     State(private): State<AdminScope>,
     headers: HeaderMap,
@@ -385,9 +386,10 @@ pub async fn request_validation_middleware(
     Ok(next.run(request).await)
 }
 
-/// Middleware for Google JWT authentication
+/// Middleware for Google JWT authentication with token caching
 ///
 /// Validates JWT token from Authorization header via Google
+/// Token validation is automatically cached in GoogleAuthService (5 min TTL)
 /// Adds user information to request extensions for use in handlers
 pub async fn google_auth_middleware(
     State(google_auth): State<GoogleAuthService>,
@@ -412,7 +414,7 @@ pub async fn google_auth_middleware(
         }
     };
 
-    // Validate Google JWT token
+    // Validate Google JWT token (with internal caching)
     match google_auth.validate_token(token).await {
         Ok(claims) => {
             info!(
@@ -431,7 +433,7 @@ pub async fn google_auth_middleware(
             let error_response = ApiResult::<()>::error_with_status(
                 "INVALID_TOKEN",
                 "Invalid or expired authentication token",
-                StatusCode::UNAUTHORIZED,
+                StatusCode::UNAUTHORIZED, // 401
             );
             Err(error_response.into_response())
         }
@@ -489,36 +491,9 @@ pub async fn google_auth_with_email_check_middleware(
         }
     };
 
-    // Validate Google JWT token
-    match google_auth.validate_token(token).await {
-        Ok(claims) => {
-            // Check email
-            let email = claims.email.as_deref().unwrap_or("");
-
-            if !allowed_emails.is_allowed(email) {
-                warn!(
-                    email = email,
-                    "User authenticated but email not in allowed list"
-                );
-                let error_response = ApiResult::<()>::error_with_status(
-                    "FORBIDDEN",
-                    "Access denied for this email address",
-                    StatusCode::FORBIDDEN,
-                );
-                return Err(error_response.into_response());
-            }
-
-            info!(
-                email = email,
-                sub = %claims.sub,
-                "User authenticated via Google with email check"
-            );
-
-            // Add claims to request extensions
-            request.extensions_mut().insert(claims);
-
-            Ok(next.run(request).await)
-        }
+    // Validate Google JWT token (with internal caching)
+    let claims = match google_auth.validate_token(token).await {
+        Ok(claims) => claims,
         Err(err) => {
             warn!(error = %err, "Google JWT validation failed");
             let error_response = ApiResult::<()>::error_with_status(
@@ -526,7 +501,34 @@ pub async fn google_auth_with_email_check_middleware(
                 "Invalid or expired authentication token",
                 StatusCode::UNAUTHORIZED,
             );
-            Err(error_response.into_response())
+            return Err(error_response.into_response());
         }
+    };
+
+    // Check email
+    let email = claims.email.as_deref().unwrap_or("");
+
+    if !allowed_emails.is_allowed(email) {
+        warn!(
+            email = email,
+            "User authenticated but email not in allowed list"
+        );
+        let error_response = ApiResult::<()>::error_with_status(
+            "FORBIDDEN",
+            "Access denied for this email address",
+            StatusCode::FORBIDDEN,
+        );
+        return Err(error_response.into_response());
     }
+
+    info!(
+        email = email,
+        sub = %claims.sub,
+        "User authenticated via Google with email check"
+    );
+
+    // Add claims to request extensions
+    request.extensions_mut().insert(claims);
+
+    Ok(next.run(request).await)
 }

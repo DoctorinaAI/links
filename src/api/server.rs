@@ -103,7 +103,9 @@ impl Server {
         let google_auth = if let Some(client_id) = &self.config.google_client_id {
             if !client_id.is_empty() {
                 let service = crate::services::GoogleAuthService::new(client_id.clone());
-                info!("Google authentication enabled");
+                info!(
+                    "Google authentication enabled with built-in caching (keys: 1h, tokens: 5min)"
+                );
                 Some(service)
             } else {
                 tracing::warn!("CONFIG_GOOGLE_CLIENT_ID is empty - authentication disabled");
