@@ -4,6 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::Serialize;
+use utoipa::ToSchema;
 
 /// Status constant for successful responses
 const STATUS_OK: &str = "ok";
@@ -12,21 +13,23 @@ const STATUS_OK: &str = "ok";
 const STATUS_ERROR: &str = "error";
 
 /// Basic structure for successful API responses
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ApiResponse<T> {
     pub status: &'static str,
     pub data: T,
 }
 
 /// Basic error structure for API responses
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ApiError {
+    /// Error code identifier
     pub code: String,
+    /// Human-readable error message
     pub message: String,
 }
 
 /// Standard error response
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ApiErrorResponse {
     pub status: &'static str,
     pub error: ApiError,

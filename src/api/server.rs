@@ -1,14 +1,62 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-//use crate::services::FingerprintService;
-//use crate::services::ShortLinkService;
-use axum::{Router, routing::get};
+use axum::response::{Html, IntoResponse};
+use axum::routing::{delete, get, post, put};
+use axum::{Json, Router};
+use utoipa::OpenApi;
 
 use crate::api::{routes_private, routes_public, state::ApiState};
 
 use tokio::net::TcpListener;
 use tracing::info;
+
+/// OpenAPI documentation structure
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "Links API",
+        version = "0.0.1",
+        description = "A simple link shortener service with analytics",
+        contact(
+            name = "Mike Matiunin",
+            email = "plugfox@gmail.com"
+        ),
+        license(
+            name = "MIT",
+        )
+    ),
+    paths(
+        routes_public::get_health,
+        routes_public::get_about,
+        routes_public::get_resolve_short_link,
+        routes_public::post_click_short_link,
+        routes_public::not_found,
+        routes_private::get_check,
+        routes_private::post_create_short_link,
+        routes_private::get_list_short_links,
+        routes_private::get_short_link,
+        routes_private::put_update_short_link,
+        routes_private::delete_short_link,
+        routes_private::get_click_stats,
+    ),
+    components(
+        schemas(
+            routes_public::AboutInfo,
+            routes_public::ResolveResponse,
+            routes_private::CreateShortLinkRequest,
+            routes_private::ShortLinkResponse,
+            routes_private::ShortLinksListResponse,
+            routes_private::ClickStatsResponse,
+            crate::api::response::ApiError,
+        )
+    ),
+    tags(
+        (name = "public", description = "Public endpoints for link resolution and tracking"),
+        (name = "admin", description = "Admin endpoints for link management (requires authentication)")
+    )
+)]
+struct ApiDoc;
 
 /// Server configuration using Arc to avoid unnecessary cloning
 pub struct ServerConfig {
@@ -47,18 +95,33 @@ impl Server {
         // TODO: Add authentication middleware
         // .layer(from_fn_with_state(ApiState, middleware::auth_middleware));
 
+        // Handler for OpenAPI JSON spec
+        async fn openapi_spec() -> impl IntoResponse {
+            Json(ApiDoc::openapi())
+        }
+
+        // Handler for Scalar UI
+        async fn scalar_ui() -> impl IntoResponse {
+            Html(include_str!("../../tools/scalar.html"))
+        }
+
         // Create the router/app with state
         let app = Router::new()
+            .route("/api-docs/openapi.json", get(openapi_spec))
+            .route("/scalar", get(scalar_ui))
             .nest("/api", api_routes_public)
             .nest("/api/admin", api_routes_protected)
-            // TODO: Add fallback route
-            // .fallback(routes_public::public_not_found)
             .with_state(ApiState {
                 fingerprint_service: self.config.fingerprint_service.clone(),
                 short_link_service: self.config.short_link_service.clone(),
             });
 
         info!(%addr, "Starting api server");
+        info!("API documentation available at: http://{}/scalar", addr);
+        info!(
+            "OpenAPI spec available at: http://{}/api-docs/openapi.json",
+            addr
+        );
 
         // Start the server with graceful shutdown support
         // Включаем поддержку ConnectInfo для получения IP адресов клиентов
@@ -79,9 +142,20 @@ impl Server {
             .route("/about", get(routes_public::get_about))
             .route("/version", get(routes_public::get_about))
             .route("/404", get(routes_public::not_found))
+            // Public short link routes
+            .route("/link/:slug", get(routes_public::get_resolve_short_link))
+            .route("/click/:slug", post(routes_public::post_click_short_link))
     }
 
     fn private_routes() -> Router<ApiState> {
-        Router::new().route("/check", get(routes_private::get_check))
+        Router::new()
+            .route("/check", get(routes_private::get_check))
+            // Admin short link management routes
+            .route("/links", get(routes_private::get_list_short_links))
+            .route("/links", post(routes_private::post_create_short_link))
+            .route("/links/:slug", get(routes_private::get_short_link))
+            .route("/links/:slug", put(routes_private::put_update_short_link))
+            .route("/links/:slug", delete(routes_private::delete_short_link))
+            .route("/links/:slug/stats", get(routes_private::get_click_stats))
     }
 }
