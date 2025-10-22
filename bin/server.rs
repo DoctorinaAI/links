@@ -52,6 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 short_link_service,
                 google_client_id: config.google_client_id.clone(),
                 allowed_emails: config.allowed_emails.clone(),
+                cors_origins: config.cors_origins.clone(),
             });
             server.start(api_shutdown).await;
         });

@@ -89,6 +89,15 @@ CONFIG_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 #   CONFIG_ALLOWED_EMAILS=*@doctorina.com                      # All emails from domain
 #   CONFIG_ALLOWED_EMAILS=admin@example.com,*@company.com      # Multiple patterns
 CONFIG_ALLOWED_EMAILS=*@doctorina.com,admin@example.com
+
+# CORS Allowed Origins (comma-separated)
+# Leave empty to allow all origins (permissive mode - recommended for development)
+# For production, specify exact origins for better security
+# Examples:
+#   CONFIG_CORS_ORIGINS=                                        # Allow all (permissive)
+#   CONFIG_CORS_ORIGINS=https://example.com                     # Single origin
+#   CONFIG_CORS_ORIGINS=https://example.com,https://app.com     # Multiple origins
+CONFIG_CORS_ORIGINS=
 ```
 
 #### Option B: Command-Line Arguments
@@ -100,7 +109,8 @@ CONFIG_ALLOWED_EMAILS=*@doctorina.com,admin@example.com
   --address 0.0.0.0:8000 \
   --database-connection "sqlite://data/links.db?mode=rwc" \
   --google-client-id "your-client-id.apps.googleusercontent.com" \
-  --allowed-emails "admin@example.com,*@company.com"
+  --allowed-emails "admin@example.com,*@company.com" \
+  --cors-origins "https://example.com,https://app.example.com"
 ```
 
 ### 4. Run
@@ -196,6 +206,34 @@ CONFIG_ALLOWED_EMAILS=ceo@example.com,*@company.com,*@partner.com
 - Multiple patterns separated by commas
 - Empty list or omitted variable - Allows all authenticated Google users
 
+### CORS Configuration
+
+Control which origins can access your API using Cross-Origin Resource Sharing (CORS):
+
+```env
+# Allow all origins (permissive - for development)
+CONFIG_CORS_ORIGINS=
+
+# Allow specific origin
+CONFIG_CORS_ORIGINS=https://example.com
+
+# Allow multiple origins
+CONFIG_CORS_ORIGINS=https://example.com,https://app.example.com,https://admin.example.com
+```
+
+**How it works:**
+- **Empty list** (default) - Permissive mode, allows requests from any origin
+- **Specific origins** - Only listed origins can access the API
+- All HTTP methods are allowed (GET, POST, PUT, DELETE, etc.)
+- All headers are allowed
+- Credentials (cookies, authorization headers) are supported
+
+**Security recommendations:**
+- 🔓 **Development**: Use empty list for convenience
+- 🔒 **Production**: Always specify exact origins for security
+- ✅ Use HTTPS origins only in production
+- ❌ Avoid wildcards in production
+
 ## 💾 Database
 
 ### SQLite (Default)
@@ -242,6 +280,7 @@ Database schema is automatically migrated on startup. Migration files are in `mi
 | `CONFIG_DATABASE_CONNECTION` | `--database-connection` | `sqlite://data/links.db?mode=rwc` | Database connection string |
 | `CONFIG_GOOGLE_CLIENT_ID` | `--google-client-id` | **Required** | Google OAuth Client ID |
 | `CONFIG_ALLOWED_EMAILS` | `--allowed-emails` | `[]` (empty = all users) | Comma-separated email patterns |
+| `CONFIG_CORS_ORIGINS` | `--cors-origins` | `[]` (empty = all origins) | Comma-separated CORS allowed origins |
 
 ### CLI Help
 
@@ -340,20 +379,16 @@ links/
 │   │   ├── routes_public.rs   # Public endpoints
 │   │   ├── routes_private.rs  # Admin endpoints
 │   │   ├── server.rs          # Server configuration
-│   │   └── state.rs           # Shared state
-│   ├── config/                # Configuration
+│   │   └── state.rs           # Shared state (injected config & services)
+│   ├── config/                 # Configuration
 │   ├── database/              # Database abstraction
 │   ├── models/                # Data models
 │   └── services/              # Business logic
-│       ├── google_auth_service.rs  # Google OAuth
-│       ├── fingerprint_service.rs  # User tracking
-│       └── short_link_service.rs   # Link management
 ├── migrations/                # SQL migrations
-├── public/                    # Frontend assets
-│   └── index.html            # Web interface
+├── public/                    # Frontend assets (generated)
 ├── logs/                      # Log files (generated)
 ├── data/                      # SQLite database (generated)
-└── Cargo.toml                # Rust dependencies
+└── Cargo.toml                 # Rust dependencies
 ```
 
 ## 🤝 Contributing

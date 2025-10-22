@@ -16,34 +16,39 @@ use tracing::{error, info, warn};
 use crate::api::response::ApiResult;
 use crate::services::GoogleAuthService;
 
-/// Create a permissive CORS layer that allows all origins, methods, and headers
+/// Create a CORS layer with configurable allowed origins
 ///
-/// This is useful for development and APIs that need to be accessed from any origin.
-/// For production, consider restricting origins to your specific domains.
-pub fn create_cors_layer() -> CorsLayer {
-    CorsLayer::permissive()
-}
-
-/// Create a CORS layer with specific allowed origins
+/// If origins is empty, creates a permissive CORS layer allowing all origins.
+/// Otherwise, restricts CORS to the specified origins.
+/// All methods and headers are always allowed.
 ///
 /// Example:
 /// ```ignore
-/// let cors = create_cors_layer_with_origins(vec!["https://example.com", "https://app.example.com"]);
+/// // Allow all origins
+/// let cors = create_cors_layer(vec![]);
+///
+/// // Restrict to specific origins
+/// let cors = create_cors_layer(vec!["https://example.com".to_string(), "https://app.example.com".to_string()]);
 /// ```
-#[allow(dead_code)]
-pub fn create_cors_layer_with_origins(origins: Vec<&str>) -> CorsLayer {
-    use tower_http::cors::AllowOrigin;
+pub fn create_cors_layer(origins: Vec<String>) -> CorsLayer {
+    if origins.is_empty() {
+        // Permissive mode: allow all origins
+        CorsLayer::permissive()
+    } else {
+        // Restricted mode: allow only specified origins
+        use tower_http::cors::AllowOrigin;
 
-    let allowed_origins: Vec<axum::http::HeaderValue> = origins
-        .into_iter()
-        .filter_map(|origin| origin.parse().ok())
-        .collect();
+        let allowed_origins: Vec<axum::http::HeaderValue> = origins
+            .into_iter()
+            .filter_map(|origin| origin.parse().ok())
+            .collect();
 
-    CorsLayer::new()
-        .allow_origin(AllowOrigin::list(allowed_origins))
-        .allow_methods(tower_http::cors::Any)
-        .allow_headers(tower_http::cors::Any)
-        .allow_credentials(true)
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(allowed_origins))
+            .allow_methods(tower_http::cors::Any)
+            .allow_headers(tower_http::cors::Any)
+            .allow_credentials(true)
+    }
 }
 
 #[derive(Clone)]

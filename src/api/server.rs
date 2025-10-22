@@ -65,6 +65,7 @@ pub struct ServerConfig {
     pub short_link_service: Arc<crate::services::ShortLinkService>,
     pub google_client_id: String,
     pub allowed_emails: Vec<String>,
+    pub cors_origins: Vec<String>,
 }
 
 pub struct Server {
@@ -117,6 +118,16 @@ impl Server {
         let allowed_emails_list =
             middleware::AllowedEmails::new(self.config.allowed_emails.clone());
 
+        // Configure CORS
+        if self.config.cors_origins.is_empty() {
+            info!("CORS: Permissive mode - all origins allowed");
+        } else {
+            info!(
+                "CORS: Restricted mode - allowed origins: {}",
+                self.config.cors_origins.join(", ")
+            );
+        }
+
         // Build private routes with authentication middleware
         let private_routes = Self::private_routes().layer(axum::middleware::from_fn_with_state(
             (auth_service, allowed_emails_list),
@@ -140,8 +151,10 @@ impl Server {
             .route("/scalar", get(scalar_ui))
             // Mount API v1 under /api/v1 prefix
             .nest("/api/v1", api_v1)
-            // Add CORS middleware - allows all origins, methods, and headers
-            .layer(middleware::create_cors_layer());
+            // Add CORS middleware with configured origins
+            .layer(middleware::create_cors_layer(
+                self.config.cors_origins.clone(),
+            ));
 
         info!(%addr, "Starting api server");
         info!("API v1 available at: http://{}/api/v1", addr);

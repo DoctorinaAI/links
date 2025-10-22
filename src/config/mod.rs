@@ -108,28 +108,17 @@ pub struct Config {
         help = "Allowed emails or domain wildcards (e.g. admin@example.com,*@company.com)"
     )]
     pub allowed_emails: Vec<String>,
-    /*
-    /// Secret admin API key for API authentication (CLI > ENV > default)
-    //#[arg(
-    //    short = 's',
-    //    long,
-    //    env = "CONFIG_SECRET",
-    //    aliases = ["admin", "apikey", "key", "auth"],
-    //    help = "Secret admin API key for API authentication"
-    //)]
-    //pub secret: String,
-    */
 
-    /*
-    /// Chats to monitor (CLI > ENV > default)
-    /// e.g. 123456789, 987654321
+    /// CORS allowed origins (CLI > ENV > default)
+    /// Comma-separated list of allowed origins for CORS requests
+    /// If empty, all origins are allowed (permissive mode)
     #[arg(
         short = 'c',
-        long = "chats",
-        env = "CONFIG_CHATS",
-        aliases = ["chat", "groups", "channels", "monitored", "watched", "observed"],
-        help = "Chats to monitor (e.g. 123456789, 987654321)",
+        long,
+        env = "CONFIG_CORS_ORIGINS",
+        value_delimiter = ',',
+        aliases = ["cors", "origins", "allowed-origins"],
+        help = "CORS allowed origins (e.g. https://example.com,https://app.example.com). Empty = allow all"
     )]
-    pub chats: Vec<String>,
-    */
+    pub cors_origins: Vec<String>,
 }
