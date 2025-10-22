@@ -63,8 +63,8 @@ pub struct ServerConfig {
     pub address: String,
     pub fingerprint_service: Arc<crate::services::FingerprintService>,
     pub short_link_service: Arc<crate::services::ShortLinkService>,
-    pub google_client_id: Option<String>,
-    pub allowed_emails: Option<String>,
+    pub google_client_id: String,
+    pub allowed_emails: Vec<String>,
 }
 
 pub struct Server {
@@ -99,54 +99,29 @@ impl Server {
             Html(include_str!("../../tools/scalar.html"))
         }
 
-        // Initialize Google authentication if configured
-        let google_auth = if let Some(client_id) = &self.config.google_client_id {
-            if !client_id.is_empty() {
-                let service = crate::services::GoogleAuthService::new(client_id.clone());
-                info!(
-                    "Google authentication enabled with built-in caching (keys: 1h, tokens: 5min)"
-                );
-                Some(service)
-            } else {
-                tracing::warn!("CONFIG_GOOGLE_CLIENT_ID is empty - authentication disabled");
-                None
-            }
+        // Initialize Google authentication
+        let auth_service =
+            crate::services::GoogleAuthService::new(self.config.google_client_id.clone());
+        info!("Google authentication enabled with built-in caching (keys: 1h, tokens: 5min)");
+
+        // Configure email filtering
+        if self.config.allowed_emails.is_empty() {
+            info!("No email restrictions - all authenticated users allowed");
         } else {
-            tracing::warn!("CONFIG_GOOGLE_CLIENT_ID not configured - authentication disabled");
-            None
-        };
+            info!(
+                "Email filtering enabled: {}",
+                self.config.allowed_emails.join(", ")
+            );
+        }
 
-        // Build private routes with conditional authentication
-        let private_routes = if let Some(auth_service) = google_auth {
-            // Parse allowed emails if configured
-            let allowed_emails = if let Some(emails) = &self.config.allowed_emails {
-                if !emails.is_empty() {
-                    info!("Email filtering enabled: {}", emails);
-                    emails
-                        .split(',')
-                        .map(|s| s.trim().to_string())
-                        .filter(|s| !s.is_empty())
-                        .collect::<Vec<_>>()
-                } else {
-                    info!("No email restrictions configured - all authenticated users allowed");
-                    Vec::new()
-                }
-            } else {
-                info!("No email restrictions configured - all authenticated users allowed");
-                Vec::new()
-            };
+        let allowed_emails_list =
+            middleware::AllowedEmails::new(self.config.allowed_emails.clone());
 
-            let allowed_emails_list = middleware::AllowedEmails::new(allowed_emails);
-
-            // Apply authentication middleware with state
-            Self::private_routes().layer(axum::middleware::from_fn_with_state(
-                (auth_service, allowed_emails_list),
-                middleware::google_auth_with_email_check_middleware,
-            ))
-        } else {
-            // No authentication - pass through all requests
-            Self::private_routes()
-        };
+        // Build private routes with authentication middleware
+        let private_routes = Self::private_routes().layer(axum::middleware::from_fn_with_state(
+            (auth_service, allowed_emails_list),
+            middleware::google_auth_with_email_check_middleware,
+        ));
 
         // Build API v1 routes (combines public and private)
         let api_v1 = Router::new()

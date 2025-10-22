@@ -80,7 +80,7 @@ pub struct Config {
         short = 'd',
         long,
         env = "CONFIG_DATABASE_CONNECTION",
-        aliases = ["db", "sqlite", "sqlite3", "sql", "storage"],
+        aliases = ["db", "sqlite", "sqlite3", "sql", "storage", "database", "pg", "postgres", "postgresql"],
         default_value = "sqlite://data/links.db?mode=rwc",
         help = "Database connection URL (e.g. sqlite://links.db or postgres://user:pass@host/db)"
     )]
@@ -88,22 +88,26 @@ pub struct Config {
 
     /// Google OAuth Client ID for authentication (CLI > ENV > default)
     #[arg(
+        short = 'g',
         long,
         env = "CONFIG_GOOGLE_CLIENT_ID",
         aliases = ["google-client", "oauth-client", "client-id"],
+        required = true,
         help = "Google OAuth Client ID (e.g. xxxxx.apps.googleusercontent.com)"
     )]
-    pub google_client_id: Option<String>,
+    pub google_client_id: String,
 
     /// Allowed email addresses or domain wildcards for authentication (CLI > ENV > default)
-    /// Comma-separated list, supports wildcards like "*@example.com"
+    /// Supports wildcards like "*@example.com"
     #[arg(
+        short = 'u',
         long,
         env = "CONFIG_ALLOWED_EMAILS",
-        aliases = ["emails", "whitelist", "allowed-users"],
-        help = "Comma-separated list of allowed emails (e.g. admin@example.com,*@company.com)"
+        value_delimiter = ',',
+        aliases = ["emails", "whitelist", "allowed-users", "permitted", "users"],
+        help = "Allowed emails or domain wildcards (e.g. admin@example.com,*@company.com)"
     )]
-    pub allowed_emails: Option<String>,
+    pub allowed_emails: Vec<String>,
     /*
     /// Secret admin API key for API authentication (CLI > ENV > default)
     //#[arg(

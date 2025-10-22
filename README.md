@@ -82,8 +82,12 @@ CONFIG_DATABASE_CONNECTION=sqlite://data/links.db?mode=rwc
 # Google OAuth
 CONFIG_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 
-# Email Access Control (comma-separated)
-# Supports wildcards: *@domain.com allows all emails from that domain
+# Email Access Control (comma-separated, supports wildcards)
+# Leave empty or omit to allow all authenticated Google users
+# Examples:
+#   CONFIG_ALLOWED_EMAILS=admin@example.com                    # Single email
+#   CONFIG_ALLOWED_EMAILS=*@doctorina.com                      # All emails from domain
+#   CONFIG_ALLOWED_EMAILS=admin@example.com,*@company.com      # Multiple patterns
 CONFIG_ALLOWED_EMAILS=*@doctorina.com,admin@example.com
 ```
 
@@ -94,7 +98,9 @@ CONFIG_ALLOWED_EMAILS=*@doctorina.com,admin@example.com
   --env production \
   --logs info \
   --address 0.0.0.0:8000 \
-  --database-connection "sqlite://data/links.db?mode=rwc"
+  --database-connection "sqlite://data/links.db?mode=rwc" \
+  --google-client-id "your-client-id.apps.googleusercontent.com" \
+  --allowed-emails "admin@example.com,*@company.com"
 ```
 
 ### 4. Run
@@ -177,14 +183,18 @@ CONFIG_ALLOWED_EMAILS=admin@example.com,john@example.com
 # Domain wildcard (all emails from domain)
 CONFIG_ALLOWED_EMAILS=*@company.com
 
-# Mixed
+# Mixed patterns
 CONFIG_ALLOWED_EMAILS=ceo@example.com,*@company.com,*@partner.com
+
+# Allow all authenticated users (empty or omit variable)
+# CONFIG_ALLOWED_EMAILS=
 ```
 
 **How it works:**
 - `*@domain.com` - Allows any email ending with `@domain.com`
 - `user@domain.com` - Allows only this specific email
 - Multiple patterns separated by commas
+- Empty list or omitted variable - Allows all authenticated Google users
 
 ## 💾 Database
 
@@ -230,8 +240,8 @@ Database schema is automatically migrated on startup. Migration files are in `mi
 | `CONFIG_LOGS` | `--logs` | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
 | `CONFIG_ADDRESS` | `--address` | `0.0.0.0:8000` | Server bind address |
 | `CONFIG_DATABASE_CONNECTION` | `--database-connection` | `sqlite://data/links.db?mode=rwc` | Database connection string |
-| `CONFIG_GOOGLE_CLIENT_ID` | - | Required | Google OAuth Client ID |
-| `CONFIG_ALLOWED_EMAILS` | - | Optional | Comma-separated email patterns |
+| `CONFIG_GOOGLE_CLIENT_ID` | `--google-client-id` | **Required** | Google OAuth Client ID |
+| `CONFIG_ALLOWED_EMAILS` | `--allowed-emails` | `[]` (empty = all users) | Comma-separated email patterns |
 
 ### CLI Help
 
@@ -306,10 +316,7 @@ docker-compose up -d
 
 ## 📈 Performance
 
-- **JWT Validation**: ~1-5ms (with cached keys)
-- **Database**: SQLite ~10-50 req/s per core, PostgreSQL ~1000+ req/s
-- **Memory**: ~10-50 MB base usage
-- **Startup**: ~100-500ms
+TODO: Add benchmarks and performance metrics here.
 
 ## 🛠️ Tech Stack
 
