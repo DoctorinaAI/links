@@ -1,42 +1,29 @@
-/* -- Create short_links table
+-- Create short_links table with slug as primary key
+-- DateTime stored as INTEGER (Unix timestamp in seconds) for SQLite compatibility
+-- params stored as TEXT (JSON) for SQLite compatibility
 CREATE TABLE IF NOT EXISTS short_links (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    short_code TEXT NOT NULL UNIQUE,
-    original_url TEXT NOT NULL,
-    fingerprint TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP,
-    click_count INTEGER DEFAULT 0
+    slug TEXT PRIMARY KEY NOT NULL,
+    params TEXT NOT NULL DEFAULT '{}',
+    author TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
 );
 
--- Create index for faster lookups
-CREATE INDEX IF NOT EXISTS idx_short_code ON short_links(short_code);
-CREATE INDEX IF NOT EXISTS idx_fingerprint ON short_links(fingerprint);
-
--- Create fingerprints table
-CREATE TABLE IF NOT EXISTS fingerprints (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    fingerprint TEXT NOT NULL UNIQUE,
-    user_agent TEXT,
-    ip_address TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Create index for faster lookups by author and timestamps
+CREATE INDEX IF NOT EXISTS idx_short_links_author ON short_links(author);
+CREATE INDEX IF NOT EXISTS idx_short_links_created_at ON short_links(created_at);
+CREATE INDEX IF NOT EXISTS idx_short_links_updated_at ON short_links(updated_at);
 
 -- Create clicks table for analytics
+-- Separate table to track clicks on short links
 CREATE TABLE IF NOT EXISTS clicks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    short_link_id INTEGER NOT NULL,
-    fingerprint TEXT,
-    ip_address TEXT,
-    user_agent TEXT,
-    referer TEXT,
-    clicked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (short_link_id) REFERENCES short_links(id) ON DELETE CASCADE
+    slug TEXT NOT NULL,
+    clicked_at INTEGER NOT NULL,
+    FOREIGN KEY (slug) REFERENCES short_links(slug) ON DELETE CASCADE
 );
 
--- Create index for analytics queries
-CREATE INDEX IF NOT EXISTS idx_clicks_short_link_id ON clicks(short_link_id);
-CREATE INDEX IF NOT EXISTS idx_clicks_fingerprint ON clicks(fingerprint);
+-- Create indexes for analytics queries
+CREATE INDEX IF NOT EXISTS idx_clicks_slug ON clicks(slug);
 CREATE INDEX IF NOT EXISTS idx_clicks_clicked_at ON clicks(clicked_at);
- */
+CREATE INDEX IF NOT EXISTS idx_clicks_slug_clicked_at ON clicks(slug, clicked_at);
