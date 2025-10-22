@@ -50,6 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 address: config.address.clone(),
                 fingerprint_service,
                 short_link_service,
+                google_client_id: config.google_client_id.clone(),
+                allowed_emails: config.allowed_emails.clone(),
             });
             server.start(api_shutdown).await;
         });

@@ -6,7 +6,7 @@ use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use utoipa::OpenApi;
 
-use crate::api::{routes_private, routes_public, state::ApiState};
+use crate::api::{middleware, routes_private, routes_public, state::ApiState};
 
 use tokio::net::TcpListener;
 use tracing::info;
@@ -63,6 +63,8 @@ pub struct ServerConfig {
     pub address: String,
     pub fingerprint_service: Arc<crate::services::FingerprintService>,
     pub short_link_service: Arc<crate::services::ShortLinkService>,
+    pub google_client_id: Option<String>,
+    pub allowed_emails: Option<String>,
 }
 
 pub struct Server {
@@ -97,14 +99,59 @@ impl Server {
             Html(include_str!("../../tools/scalar.html"))
         }
 
+        // Initialize Google authentication if configured
+        let google_auth = if let Some(client_id) = &self.config.google_client_id {
+            if !client_id.is_empty() {
+                let service = crate::services::GoogleAuthService::new(client_id.clone());
+                info!("Google authentication enabled");
+                Some(service)
+            } else {
+                tracing::warn!("CONFIG_GOOGLE_CLIENT_ID is empty - authentication disabled");
+                None
+            }
+        } else {
+            tracing::warn!("CONFIG_GOOGLE_CLIENT_ID not configured - authentication disabled");
+            None
+        };
+
+        // Build private routes with conditional authentication
+        let private_routes = if let Some(auth_service) = google_auth {
+            // Parse allowed emails if configured
+            let allowed_emails = if let Some(emails) = &self.config.allowed_emails {
+                if !emails.is_empty() {
+                    info!("Email filtering enabled: {}", emails);
+                    emails
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect::<Vec<_>>()
+                } else {
+                    info!("No email restrictions configured - all authenticated users allowed");
+                    Vec::new()
+                }
+            } else {
+                info!("No email restrictions configured - all authenticated users allowed");
+                Vec::new()
+            };
+
+            let allowed_emails_list = middleware::AllowedEmails::new(allowed_emails);
+
+            // Apply authentication middleware with state
+            Self::private_routes().layer(axum::middleware::from_fn_with_state(
+                (auth_service, allowed_emails_list),
+                middleware::google_auth_with_email_check_middleware,
+            ))
+        } else {
+            // No authentication - pass through all requests
+            Self::private_routes()
+        };
+
         // Build API v1 routes (combines public and private)
         let api_v1 = Router::new()
             // Public routes (no authentication)
             .merge(Self::public_routes())
-            // Private/Admin routes (with authentication)
-            .nest("/admin", Self::private_routes())
-            // TODO: Add authentication middleware for /admin routes
-            // .layer(from_fn_with_state(ApiState, middleware::auth_middleware));
+            // Private/Admin routes (with authentication if configured)
+            .nest("/admin", private_routes)
             .with_state(ApiState {
                 fingerprint_service: self.config.fingerprint_service.clone(),
                 short_link_service: self.config.short_link_service.clone(),
@@ -115,7 +162,9 @@ impl Server {
             .route("/api-docs/openapi.json", get(openapi_spec))
             .route("/scalar", get(scalar_ui))
             // Mount API v1 under /api/v1 prefix
-            .nest("/api/v1", api_v1);
+            .nest("/api/v1", api_v1)
+            // Add CORS middleware - allows all origins, methods, and headers
+            .layer(middleware::create_cors_layer());
 
         info!(%addr, "Starting api server");
         info!("API v1 available at: http://{}/api/v1", addr);

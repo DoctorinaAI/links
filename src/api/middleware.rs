@@ -10,10 +10,41 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
+use tower_http::cors::CorsLayer;
 use tracing::{error, info, warn};
 
 use crate::api::response::ApiResult;
 use crate::services::GoogleAuthService;
+
+/// Create a permissive CORS layer that allows all origins, methods, and headers
+///
+/// This is useful for development and APIs that need to be accessed from any origin.
+/// For production, consider restricting origins to your specific domains.
+pub fn create_cors_layer() -> CorsLayer {
+    CorsLayer::permissive()
+}
+
+/// Create a CORS layer with specific allowed origins
+///
+/// Example:
+/// ```ignore
+/// let cors = create_cors_layer_with_origins(vec!["https://example.com", "https://app.example.com"]);
+/// ```
+#[allow(dead_code)]
+pub fn create_cors_layer_with_origins(origins: Vec<&str>) -> CorsLayer {
+    use tower_http::cors::AllowOrigin;
+
+    let allowed_origins: Vec<axum::http::HeaderValue> = origins
+        .into_iter()
+        .filter_map(|origin| origin.parse().ok())
+        .collect();
+
+    CorsLayer::new()
+        .allow_origin(AllowOrigin::list(allowed_origins))
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any)
+        .allow_credentials(true)
+}
 
 #[derive(Clone)]
 pub struct AdminScope {

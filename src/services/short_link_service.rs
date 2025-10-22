@@ -28,6 +28,7 @@ impl ShortLinkService {
         slug: String,
         params_json: String,
         author: String,
+        redirect: Option<String>,
         created_at: i64,
         updated_at: i64,
     ) -> Result<ShortLink> {
@@ -42,6 +43,7 @@ impl ShortLinkService {
             slug,
             params,
             author,
+            redirect,
             created_at,
             updated_at,
         })
@@ -54,12 +56,16 @@ impl ShortLinkService {
         let created_at = request.created_at.timestamp();
         let updated_at = request.updated_at.timestamp();
 
+        // Validate redirect URL
+        let redirect = ShortLink::validate_redirect(request.redirect.clone());
+
         match self.db.as_ref() {
             Database::SQLite(pool) => {
-                sqlx::query("INSERT INTO short_links (slug, params, author, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+                sqlx::query("INSERT INTO links (slug, params, author, redirect, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
                     .bind(&request.slug)
                     .bind(&params_json)
                     .bind(&request.author)
+                    .bind(&redirect)
                     .bind(created_at)
                     .bind(updated_at)
                     .execute(pool)
@@ -67,10 +73,11 @@ impl ShortLinkService {
                     .context("Failed to insert short link")?;
             }
             Database::Postgres(pool) => {
-                sqlx::query("INSERT INTO short_links (slug, params, author, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)")
+                sqlx::query("INSERT INTO links (slug, params, author, redirect, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)")
                     .bind(&request.slug)
                     .bind(&params_json)
                     .bind(&request.author)
+                    .bind(&redirect)
                     .bind(created_at)
                     .bind(updated_at)
                     .execute(pool)
@@ -79,7 +86,10 @@ impl ShortLinkService {
             }
         }
 
-        Ok(request)
+        Ok(ShortLink {
+            redirect,
+            ..request
+        })
     }
 
     /// Resolve a short link by its slug
@@ -87,27 +97,46 @@ impl ShortLinkService {
         // Note: SQL is duplicated for SQLite (?) and PostgreSQL ($1) parameter binding.
         // This is intentional to avoid string manipulation and SQL injection risks.
         let row = match self.db.as_ref() {
-            Database::SQLite(pool) => {
-                sqlx::query("SELECT slug, params, author, created_at, updated_at FROM short_links WHERE slug = ?")
-                    .bind(slug)
-                    .fetch_optional(pool)
-                    .await
-                    .context("Failed to fetch short link")?
-                    .map(|r| (r.get("slug"), r.get("params"), r.get("author"), r.get("created_at"), r.get("updated_at")))
-            }
-            Database::Postgres(pool) => {
-                sqlx::query("SELECT slug, params, author, created_at, updated_at FROM short_links WHERE slug = $1")
-                    .bind(slug)
-                    .fetch_optional(pool)
-                    .await
-                    .context("Failed to fetch short link")?
-                    .map(|r| (r.get("slug"), r.get("params"), r.get("author"), r.get("created_at"), r.get("updated_at")))
-            }
+            Database::SQLite(pool) => sqlx::query(
+                "SELECT slug, params, author, redirect, created_at, updated_at FROM links WHERE slug = ?",
+            )
+            .bind(slug)
+            .fetch_optional(pool)
+            .await
+            .context("Failed to fetch short link")?
+            .map(|r| {
+                (
+                    r.get("slug"),
+                    r.get("params"),
+                    r.get("author"),
+                    r.get("redirect"),
+                    r.get("created_at"),
+                    r.get("updated_at"),
+                )
+            }),
+            Database::Postgres(pool) => sqlx::query(
+                "SELECT slug, params, author, redirect, created_at, updated_at FROM links WHERE slug = $1",
+            )
+            .bind(slug)
+            .fetch_optional(pool)
+            .await
+            .context("Failed to fetch short link")?
+            .map(|r| {
+                (
+                    r.get("slug"),
+                    r.get("params"),
+                    r.get("author"),
+                    r.get("redirect"),
+                    r.get("created_at"),
+                    r.get("updated_at"),
+                )
+            }),
         };
 
         match row {
-            Some((slug, params, author, created_at, updated_at)) => {
-                Self::tuple_to_short_link(slug, params, author, created_at, updated_at).map(Some)
+            Some((slug, params, author, redirect, created_at, updated_at)) => {
+                Self::tuple_to_short_link(slug, params, author, redirect, created_at, updated_at)
+                    .map(Some)
             }
             None => Ok(None),
         }
@@ -116,13 +145,13 @@ impl ShortLinkService {
     /// Delete a short link by its slug
     pub async fn delete_short_link(&self, slug: &str) -> Result<()> {
         let rows_affected = match self.db.as_ref() {
-            Database::SQLite(pool) => sqlx::query("DELETE FROM short_links WHERE slug = ?")
+            Database::SQLite(pool) => sqlx::query("DELETE FROM links WHERE slug = ?")
                 .bind(slug)
                 .execute(pool)
                 .await
                 .context("Failed to delete short link")?
                 .rows_affected(),
-            Database::Postgres(pool) => sqlx::query("DELETE FROM short_links WHERE slug = $1")
+            Database::Postgres(pool) => sqlx::query("DELETE FROM links WHERE slug = $1")
                 .bind(slug)
                 .execute(pool)
                 .await
@@ -139,31 +168,31 @@ impl ShortLinkService {
 
     /// List all short links
     pub async fn list_short_links(&self) -> Result<Vec<ShortLink>> {
-        let tuples: Vec<(String, String, String, i64, i64)> = match self.db.as_ref() {
+        let tuples: Vec<(String, String, String, Option<String>, i64, i64)> = match self.db.as_ref() {
             Database::SQLite(pool) => {
-                sqlx::query("SELECT slug, params, author, created_at, updated_at FROM short_links ORDER BY created_at DESC")
+                sqlx::query("SELECT slug, params, author, redirect, created_at, updated_at FROM links ORDER BY created_at DESC")
                     .fetch_all(pool)
                     .await
                     .context("Failed to fetch short links")?
                     .into_iter()
-                    .map(|r| (r.get("slug"), r.get("params"), r.get("author"), r.get("created_at"), r.get("updated_at")))
+                    .map(|r| (r.get("slug"), r.get("params"), r.get("author"), r.get("redirect"), r.get("created_at"), r.get("updated_at")))
                     .collect()
             }
             Database::Postgres(pool) => {
-                sqlx::query("SELECT slug, params, author, created_at, updated_at FROM short_links ORDER BY created_at DESC")
+                sqlx::query("SELECT slug, params, author, redirect, created_at, updated_at FROM links ORDER BY created_at DESC")
                     .fetch_all(pool)
                     .await
                     .context("Failed to fetch short links")?
                     .into_iter()
-                    .map(|r| (r.get("slug"), r.get("params"), r.get("author"), r.get("created_at"), r.get("updated_at")))
+                    .map(|r| (r.get("slug"), r.get("params"), r.get("author"), r.get("redirect"), r.get("created_at"), r.get("updated_at")))
                     .collect()
             }
         };
 
         tuples
             .into_iter()
-            .map(|(slug, params, author, created_at, updated_at)| {
-                Self::tuple_to_short_link(slug, params, author, created_at, updated_at)
+            .map(|(slug, params, author, redirect, created_at, updated_at)| {
+                Self::tuple_to_short_link(slug, params, author, redirect, created_at, updated_at)
             })
             .collect()
     }
@@ -174,12 +203,16 @@ impl ShortLinkService {
             serde_json::to_string(&update.params).context("Failed to serialize params to JSON")?;
         let updated_at = Utc::now().timestamp();
 
+        // Validate redirect URL
+        let redirect = ShortLink::validate_redirect(update.redirect);
+
         let rows_affected = match self.db.as_ref() {
             Database::SQLite(pool) => sqlx::query(
-                "UPDATE short_links SET params = ?, author = ?, updated_at = ? WHERE slug = ?",
+                "UPDATE links SET params = ?, author = ?, redirect = ?, updated_at = ? WHERE slug = ?",
             )
             .bind(&params_json)
             .bind(&update.author)
+            .bind(&redirect)
             .bind(updated_at)
             .bind(slug)
             .execute(pool)
@@ -187,10 +220,11 @@ impl ShortLinkService {
             .context("Failed to update short link")?
             .rows_affected(),
             Database::Postgres(pool) => sqlx::query(
-                "UPDATE short_links SET params = $1, author = $2, updated_at = $3 WHERE slug = $4",
+                "UPDATE links SET params = $1, author = $2, redirect = $3, updated_at = $4 WHERE slug = $5",
             )
             .bind(&params_json)
             .bind(&update.author)
+            .bind(&redirect)
             .bind(updated_at)
             .bind(slug)
             .execute(pool)

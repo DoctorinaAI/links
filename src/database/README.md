@@ -80,12 +80,12 @@ let fingerprint_service = FingerprintService::new(db.clone());
 // Get the underlying pool for custom queries
 match db.as_ref() {
     Database::SQLite(pool) => {
-        let result = sqlx::query("SELECT * FROM short_links")
+        let result = sqlx::query("SELECT * FROM links")
             .fetch_all(pool)
             .await?;
     }
     Database::Postgres(pool) => {
-        let result = sqlx::query("SELECT * FROM short_links")
+        let result = sqlx::query("SELECT * FROM links")
             .fetch_all(pool)
             .await?;
     }
@@ -116,7 +116,7 @@ migrations/
 
 ```sql
 -- migrations/20251021000000_schema.sql
-CREATE TABLE IF NOT EXISTS short_links (
+CREATE TABLE IF NOT EXISTS links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     short_code TEXT NOT NULL UNIQUE,
     original_url TEXT NOT NULL,
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS short_links (
 
 ### Tables
 
-#### `short_links`
+#### `links`
 - `id`: Primary key (auto-increment)
 - `short_code`: Unique short code for the URL
 - `original_url`: Original long URL
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS short_links (
 
 #### `clicks`
 - `id`: Primary key (auto-increment)
-- `short_link_id`: Foreign key to short_links
+- `short_link_id`: Foreign key to links
 - `fingerprint`: User fingerprint
 - `ip_address`: IP address
 - `user_agent`: Browser user agent

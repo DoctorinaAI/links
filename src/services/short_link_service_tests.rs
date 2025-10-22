@@ -26,6 +26,7 @@ mod tests {
             slug: "test123".to_string(),
             params,
             author: "test_user".to_string(),
+            redirect: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -65,6 +66,7 @@ mod tests {
                 slug: format!("test{}", i),
                 params,
                 author: "test_user".to_string(),
+                redirect: None,
                 created_at: Utc::now(),
                 updated_at: Utc::now(),
             };
@@ -99,6 +101,7 @@ mod tests {
             slug: "test123".to_string(),
             params: params.clone(),
             author: "test_user".to_string(),
+            redirect: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -114,6 +117,7 @@ mod tests {
             slug: "test123".to_string(),
             params,
             author: "updated_user".to_string(),
+            redirect: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -142,6 +146,7 @@ mod tests {
             slug: "test123".to_string(),
             params,
             author: "test_user".to_string(),
+            redirect: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -181,6 +186,7 @@ mod tests {
             slug: "test123".to_string(),
             params,
             author: "test_user".to_string(),
+            redirect: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
