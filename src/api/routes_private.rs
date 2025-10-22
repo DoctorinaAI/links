@@ -108,7 +108,7 @@ pub async fn post_create_short_link(
         Ok(link) => ApiResult::success(link.into()),
         Err(e) => ApiResult::error_with_status(
             "CREATE_FAILED",
-            &format!("Failed to create short link: {}", e),
+            format!("Failed to create short link: {}", e),
             StatusCode::INTERNAL_SERVER_ERROR,
         ),
     }
@@ -138,7 +138,7 @@ pub async fn get_list_short_links(
         }
         Err(e) => ApiResult::error_with_status(
             "LIST_FAILED",
-            &format!("Failed to list short links: {}", e),
+            format!("Failed to list short links: {}", e),
             StatusCode::INTERNAL_SERVER_ERROR,
         ),
     }
@@ -166,12 +166,12 @@ pub async fn get_short_link(
         Ok(Some(link)) => ApiResult::success(link.into()),
         Ok(None) => ApiResult::error_with_status(
             "NOT_FOUND",
-            &format!("Short link '{}' not found", slug),
+            format!("Short link '{}' not found", slug),
             StatusCode::NOT_FOUND,
         ),
         Err(e) => ApiResult::error_with_status(
             "FETCH_FAILED",
-            &format!("Failed to fetch short link: {}", e),
+            format!("Failed to fetch short link: {}", e),
             StatusCode::INTERNAL_SERVER_ERROR,
         ),
     }
@@ -215,13 +215,13 @@ pub async fn put_update_short_link(
             if e.to_string().contains("not found") {
                 ApiResult::error_with_status(
                     "NOT_FOUND",
-                    &format!("Short link '{}' not found", slug),
+                    format!("Short link '{}' not found", slug),
                     StatusCode::NOT_FOUND,
                 )
             } else {
                 ApiResult::error_with_status(
                     "UPDATE_FAILED",
-                    &format!("Failed to update short link: {}", e),
+                    format!("Failed to update short link: {}", e),
                     StatusCode::INTERNAL_SERVER_ERROR,
                 )
             }
@@ -253,13 +253,13 @@ pub async fn delete_short_link(
             if e.to_string().contains("not found") {
                 ApiResult::error_with_status(
                     "NOT_FOUND",
-                    &format!("Short link '{}' not found", slug),
+                    format!("Short link '{}' not found", slug),
                     StatusCode::NOT_FOUND,
                 )
             } else {
                 ApiResult::error_with_status(
                     "DELETE_FAILED",
-                    &format!("Failed to delete short link: {}", e),
+                    format!("Failed to delete short link: {}", e),
                     StatusCode::INTERNAL_SERVER_ERROR,
                 )
             }
@@ -289,7 +289,7 @@ pub async fn get_click_stats(
         Err(e) => {
             return ApiResult::error_with_status(
                 "STATS_FAILED",
-                &format!("Failed to get click count: {}", e),
+                format!("Failed to get click count: {}", e),
                 StatusCode::INTERNAL_SERVER_ERROR,
             );
         }
@@ -304,7 +304,7 @@ pub async fn get_click_stats(
         Err(e) => {
             return ApiResult::error_with_status(
                 "STATS_FAILED",
-                &format!("Failed to get click stats: {}", e),
+                format!("Failed to get click stats: {}", e),
                 StatusCode::INTERNAL_SERVER_ERROR,
             );
         }
