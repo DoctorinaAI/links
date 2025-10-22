@@ -87,14 +87,6 @@ impl Server {
             .await
             .expect("failed to bind to address");
 
-        // Public routes without authentication
-        let api_routes_public = Self::public_routes();
-
-        // Private routes that require authentication
-        let api_routes_protected = Self::private_routes();
-        // TODO: Add authentication middleware
-        // .layer(from_fn_with_state(ApiState, middleware::auth_middleware));
-
         // Handler for OpenAPI JSON spec
         async fn openapi_spec() -> impl IntoResponse {
             Json(ApiDoc::openapi())
@@ -105,18 +97,28 @@ impl Server {
             Html(include_str!("../../tools/scalar.html"))
         }
 
-        // Create the router/app with state
-        let app = Router::new()
-            .route("/api-docs/openapi.json", get(openapi_spec))
-            .route("/scalar", get(scalar_ui))
-            .nest("/api", api_routes_public)
-            .nest("/api/admin", api_routes_protected)
+        // Build API v1 routes (combines public and private)
+        let api_v1 = Router::new()
+            // Public routes (no authentication)
+            .merge(Self::public_routes())
+            // Private/Admin routes (with authentication)
+            .nest("/admin", Self::private_routes())
+            // TODO: Add authentication middleware for /admin routes
+            // .layer(from_fn_with_state(ApiState, middleware::auth_middleware));
             .with_state(ApiState {
                 fingerprint_service: self.config.fingerprint_service.clone(),
                 short_link_service: self.config.short_link_service.clone(),
             });
 
+        // Create the main router/app
+        let app = Router::new()
+            .route("/api-docs/openapi.json", get(openapi_spec))
+            .route("/scalar", get(scalar_ui))
+            // Mount API v1 under /api/v1 prefix
+            .nest("/api/v1", api_v1);
+
         info!(%addr, "Starting api server");
+        info!("API v1 available at: http://{}/api/v1", addr);
         info!("API documentation available at: http://{}/scalar", addr);
         info!(
             "OpenAPI spec available at: http://{}/api-docs/openapi.json",
@@ -124,7 +126,7 @@ impl Server {
         );
 
         // Start the server with graceful shutdown support
-        // Включаем поддержку ConnectInfo для получения IP адресов клиентов
+        // Enable ConnectInfo support to get client IP addresses
         axum::serve(listener, app.into_make_service())
             .with_graceful_shutdown(shutdown_signal)
             .await

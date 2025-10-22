@@ -13,6 +13,7 @@ use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
 use crate::api::response::ApiResult;
+use crate::services::GoogleAuthService;
 
 #[derive(Clone)]
 pub struct AdminScope {
@@ -60,7 +61,7 @@ pub async fn auth_middleware(
     }
 }
 
-/// Middleware для логирования запросов с информацией о времени выполнения и IP
+/// Middleware for logging requests with execution time and IP information
 pub async fn logging_middleware(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     request: Request,
@@ -76,14 +77,14 @@ pub async fn logging_middleware(
         .unwrap_or("unknown")
         .to_string();
 
-    // Получаем реальный IP из заголовков (если есть прокси)
+    // Get real IP from headers (if behind proxy)
     let real_ip = get_real_ip(&request, addr);
 
     let response = next.run(request).await;
     let duration = start.elapsed();
     let status = response.status();
 
-    // Логируем запрос
+    // Log the request
     if status.is_server_error() {
         warn!(
             ip = %real_ip,
@@ -119,22 +120,22 @@ pub async fn logging_middleware(
     response
 }
 
-/// Извлекает реальный IP адрес из заголовков или использует адрес подключения
+/// Extracts real IP address from headers or uses connection address as fallback
 fn get_real_ip(request: &Request, fallback_addr: SocketAddr) -> String {
-    // Проверяем заголовки в порядке приоритета
+    // Check headers in priority order
     let headers = request.headers();
 
-    // X-Forwarded-For (наиболее распространённый)
+    // X-Forwarded-For (most common)
     if let Some(forwarded_for) = headers.get("x-forwarded-for")
         && let Ok(value) = forwarded_for.to_str()
     {
-        // Берём первый IP из списка
+        // Take first IP from the list
         if let Some(first_ip) = value.split(',').next() {
             return first_ip.trim().to_string();
         }
     }
 
-    // X-Real-IP (используется Nginx)
+    // X-Real-IP (used by Nginx)
     if let Some(real_ip) = headers.get("x-real-ip")
         && let Ok(value) = real_ip.to_str()
     {
@@ -148,7 +149,7 @@ fn get_real_ip(request: &Request, fallback_addr: SocketAddr) -> String {
         return value.to_string();
     }
 
-    // X-Forwarded (менее распространённый)
+    // X-Forwarded (less common)
     if let Some(forwarded) = headers.get("x-forwarded")
         && let Ok(value) = forwarded.to_str()
         && let Some(for_part) = value
@@ -159,17 +160,17 @@ fn get_real_ip(request: &Request, fallback_addr: SocketAddr) -> String {
         return ip.trim_matches('"').to_string();
     }
 
-    // Если ничего не найдено, используем адрес подключения
+    // If nothing found, use connection address
     fallback_addr.ip().to_string()
 }
 
-/// Middleware для добавления security заголовков
+/// Middleware for adding security headers
 pub async fn security_middleware(request: Request, next: Next) -> Response {
     let mut response = next.run(request).await;
 
     let headers = response.headers_mut();
 
-    // Добавляем security заголовки
+    // Add security headers
     headers.insert(
         "X-Content-Type-Options",
         HeaderValue::from_static("nosniff"),
@@ -193,7 +194,7 @@ pub async fn security_middleware(request: Request, next: Next) -> Response {
     response
 }
 
-/// Middleware для обработки паник и конвертации их в ApiErrorResponse
+/// Middleware for handling panics and converting them to ApiErrorResponse
 pub async fn panic_recovery_middleware(request: Request, next: Next) -> Response {
     let result = std::panic::AssertUnwindSafe(next.run(request))
         .catch_unwind()
@@ -212,7 +213,7 @@ pub async fn panic_recovery_middleware(request: Request, next: Next) -> Response
 
             error!("panic occurred in request handler: {}", panic_message);
 
-            // Создаем стандартный error response
+            // Create standard error response
             let error_response = ApiResult::<()>::error_with_status(
                 "INTERNAL_SERVER_ERROR",
                 "An internal server error occurred",
@@ -224,19 +225,19 @@ pub async fn panic_recovery_middleware(request: Request, next: Next) -> Response
     }
 }
 
-/// Middleware для добавления метрик производительности в заголовки ответа
+/// Middleware for adding performance metrics to response headers
 pub async fn metrics_middleware(request: Request, next: Next) -> Response {
     let start = Instant::now();
     let method = request.method().clone();
     let uri = request.uri().clone();
 
-    // Запускаем обработчик
+    // Run the handler
     let mut response = next.run(request).await;
 
     let duration = start.elapsed();
     let headers = response.headers_mut();
 
-    // Добавляем метрики в заголовки
+    // Add metrics to headers
     if let Ok(duration_ms) = HeaderValue::from_str(&duration.as_millis().to_string()) {
         headers.insert("X-Response-Time-Ms", duration_ms);
     }
@@ -251,7 +252,7 @@ pub async fn metrics_middleware(request: Request, next: Next) -> Response {
         HeaderValue::from_static(env!("CARGO_PKG_VERSION")),
     );
 
-    // Логируем метрики для анализа
+    // Log metrics for analysis
     info!(
         method = %method,
         uri = %uri,
@@ -263,7 +264,7 @@ pub async fn metrics_middleware(request: Request, next: Next) -> Response {
     response
 }
 
-/// Rate limiting middleware для защиты от злоупотреблений
+/// Rate limiting middleware for protection against abuse
 pub async fn rate_limit_middleware(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(rate_limit): State<RateLimitState>,
@@ -276,16 +277,16 @@ pub async fn rate_limit_middleware(
     {
         let mut requests = rate_limit.requests.write().await;
 
-        // Очищаем старые записи
+        // Clean up old entries
         requests.retain(|_, (_, timestamp)| {
             now.duration_since(*timestamp) < rate_limit.window_duration
         });
 
-        // Проверяем лимит для текущего IP
+        // Check limit for current IP
         let (count, first_request) = requests.entry(client_ip.clone()).or_insert((0, now));
 
         if now.duration_since(*first_request) > rate_limit.window_duration {
-            // Окно истекло, сбрасываем счетчик
+            // Window expired, reset counter
             *count = 1;
             *first_request = now;
         } else {
@@ -312,7 +313,7 @@ pub async fn rate_limit_middleware(
     Ok(next.run(request).await)
 }
 
-/// Middleware для валидации размера запроса и других параметров
+/// Middleware for validating request size and other parameters
 pub async fn request_validation_middleware(
     request: Request,
     next: Next,
@@ -320,7 +321,7 @@ pub async fn request_validation_middleware(
     let method = request.method();
     let uri = request.uri();
 
-    // Проверяем максимальную длину URI
+    // Check maximum URI length
     if uri.path().len() > 2048 {
         warn!(uri = %uri, "Request URI too long");
         let error_response = ApiResult::<()>::error_with_status(
@@ -331,7 +332,7 @@ pub async fn request_validation_middleware(
         return Err(error_response.into_response());
     }
 
-    // Проверяем метод запроса
+    // Check request method
     if !matches!(
         method,
         &axum::http::Method::GET
@@ -351,4 +352,150 @@ pub async fn request_validation_middleware(
     }
 
     Ok(next.run(request).await)
+}
+
+/// Middleware for Google JWT authentication
+///
+/// Validates JWT token from Authorization header via Google
+/// Adds user information to request extensions for use in handlers
+pub async fn google_auth_middleware(
+    State(google_auth): State<GoogleAuthService>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, Response> {
+    let auth_header = request
+        .headers()
+        .get("Authorization")
+        .and_then(|header| header.to_str().ok());
+
+    let token = match auth_header {
+        Some(header) if header.starts_with("Bearer ") => &header[7..],
+        _ => {
+            warn!("Missing or invalid Authorization header");
+            let error_response = ApiResult::<()>::error_with_status(
+                "UNAUTHORIZED",
+                "Missing or invalid Authorization header",
+                StatusCode::UNAUTHORIZED,
+            );
+            return Err(error_response.into_response());
+        }
+    };
+
+    // Validate Google JWT token
+    match google_auth.validate_token(token).await {
+        Ok(claims) => {
+            info!(
+                email = claims.email.as_deref().unwrap_or("unknown"),
+                sub = %claims.sub,
+                "User authenticated via Google"
+            );
+
+            // Add claims to request extensions for use in handlers
+            request.extensions_mut().insert(claims);
+
+            Ok(next.run(request).await)
+        }
+        Err(err) => {
+            warn!(error = %err, "Google JWT validation failed");
+            let error_response = ApiResult::<()>::error_with_status(
+                "INVALID_TOKEN",
+                "Invalid or expired authentication token",
+                StatusCode::UNAUTHORIZED,
+            );
+            Err(error_response.into_response())
+        }
+    }
+}
+
+/// Middleware for Google JWT authentication with email verification
+///
+/// Similar to google_auth_middleware, but also checks that user's email
+/// is in the allowed emails list
+#[derive(Clone)]
+pub struct AllowedEmails {
+    pub emails: Arc<Vec<String>>,
+}
+
+impl AllowedEmails {
+    pub fn new(emails: Vec<String>) -> Self {
+        Self {
+            emails: Arc::new(emails),
+        }
+    }
+
+    pub fn is_allowed(&self, email: &str) -> bool {
+        self.emails.iter().any(|allowed| {
+            // Support wildcard domains, e.g. "*@example.com"
+            if let Some(domain) = allowed.strip_prefix('*') {
+                email.ends_with(domain)
+            } else {
+                email.eq_ignore_ascii_case(allowed)
+            }
+        })
+    }
+}
+
+pub async fn google_auth_with_email_check_middleware(
+    State((google_auth, allowed_emails)): State<(GoogleAuthService, AllowedEmails)>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, Response> {
+    let auth_header = request
+        .headers()
+        .get("Authorization")
+        .and_then(|header| header.to_str().ok());
+
+    let token = match auth_header {
+        Some(header) if header.starts_with("Bearer ") => &header[7..],
+        _ => {
+            warn!("Missing or invalid Authorization header");
+            let error_response = ApiResult::<()>::error_with_status(
+                "UNAUTHORIZED",
+                "Missing or invalid Authorization header",
+                StatusCode::UNAUTHORIZED,
+            );
+            return Err(error_response.into_response());
+        }
+    };
+
+    // Validate Google JWT token
+    match google_auth.validate_token(token).await {
+        Ok(claims) => {
+            // Check email
+            let email = claims.email.as_deref().unwrap_or("");
+
+            if !allowed_emails.is_allowed(email) {
+                warn!(
+                    email = email,
+                    "User authenticated but email not in allowed list"
+                );
+                let error_response = ApiResult::<()>::error_with_status(
+                    "FORBIDDEN",
+                    "Access denied for this email address",
+                    StatusCode::FORBIDDEN,
+                );
+                return Err(error_response.into_response());
+            }
+
+            info!(
+                email = email,
+                sub = %claims.sub,
+                "User authenticated via Google with email check"
+            );
+
+            // Add claims to request extensions
+            request.extensions_mut().insert(claims);
+
+            Ok(next.run(request).await)
+        }
+        Err(err) => {
+            warn!(error = %err, "Google JWT validation failed");
+            let error_response = ApiResult::<()>::error_with_status(
+                "INVALID_TOKEN",
+                "Invalid or expired authentication token",
+                StatusCode::UNAUTHORIZED,
+            );
+            Err(error_response.into_response())
+        }
+    }
 }

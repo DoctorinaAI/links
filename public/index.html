@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+    Links - URL Shortener with Google Authentication
+
+    Quick Setup:
+    1. Update GOOGLE_CLIENT_ID in the JavaScript section below
+    2. Ensure your API server is running on http://localhost:8000
+    3. Open this file in a browser
+
+    For detailed setup instructions, see README.md
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Links - URL Shortener</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .auth-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 40px 20px;
+        }
+
+        .auth-message {
+            text-align: center;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .user-info img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+
+        .user-info .info {
+            flex: 1;
+        }
+
+        .user-info .name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .user-info .email {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .error h3 {
+            color: #c33;
+            margin-bottom: 15px;
+        }
+
+        .error a {
+            color: #667eea;
+            text-decoration: underline;
+        }
+
+        .error a:hover {
+            color: #5568d3;
+        }
+
+        .error code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #333;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .error ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .error li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .success {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .links-section {
+            margin-top: 30px;
+        }
+
+        .links-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .links-header h2 {
+            color: #333;
+        }
+
+        .create-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .create-form input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .create-form input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .links-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .link-item {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 15px;
+            transition: box-shadow 0.3s;
+        }
+
+        .link-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .link-item .url {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .link-item .short {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .link-item .short a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .link-item .short a:hover {
+            text-decoration: underline;
+        }
+
+        .link-item .copy-btn {
+            background: #e9ecef;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .link-item .copy-btn:hover {
+            background: #dee2e6;
+        }
+
+        .link-item .meta {
+            display: flex;
+            gap: 15px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .link-item .actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .link-item .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .link-item .delete-btn:hover {
+            background: #c82333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        #g_id_onload {
+            position: fixed;
+            top: -1000px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Links</h1>
+            <p>Shorten your URLs with Google authentication</p>
+        </div>
+
+        <!-- Authentication Section -->
+        <div id="authSection" class="auth-section">
+            <!-- This will be populated by initGoogleAuth() -->
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" style="display: none;"></div>
+
+        <!-- User Section -->
+        <div id="userSection" style="display: none;">
+            <div class="user-info">
+                <img id="userPicture" src="" alt="User">
+                <div class="info">
+                    <div class="name" id="userName"></div>
+                    <div class="email" id="userEmail"></div>
+                </div>
+                <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
+            </div>
+
+            <!-- Statistics -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="value" id="totalLinks">0</div>
+                    <div class="label">Total Links</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="totalClicks">0</div>
+                    <div class="label">Total Clicks</div>
+                </div>
+            </div>
+
+            <!-- Create Link Form -->
+            <div class="create-form">
+                <input type="url" id="urlInput" placeholder="Enter URL to shorten (e.g., https://example.com)"
+                    required />
+                <button class="btn" onclick="createLink()">Shorten</button>
+            </div>
+
+            <!-- Links Section -->
+            <div class="links-section">
+                <div class="links-header">
+                    <h2>Your Short Links</h2>
+                    <button class="btn" onclick="fetchLinks()">🔄 Refresh</button>
+                </div>
+                <div id="linksContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading your links...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // Configuration - UPDATE THESE VALUES
+        // ============================================================================
+
+        // Google OAuth Client ID
+        // To get your Client ID:
+        // 1. Go to https://console.cloud.google.com/
+        // 2. Create a new project or select existing one
+        // 3. Enable "Google Identity Services" API
+        // 4. Go to "APIs & Services" → "Credentials"
+        // 5. Create "OAuth 2.0 Client ID" (Web application type)
+        // 6. Add your domain to "Authorized JavaScript origins"
+        // 7. Copy the Client ID (format: xxxxx.apps.googleusercontent.com)
+        const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+
+        // API Base URL - change if your API runs on different host/port
+        const API_BASE = 'http://localhost:8000/api/v1';
+
+        // ============================================================================
+        // Application State
+        // ============================================================================
+
+        let idToken = null;
+        let userInfo = null;
+
+        // Initialize Google Authentication
+        function initGoogleAuth() {
+            const authSection = document.getElementById('authSection');
+
+            // Check if Google Client ID is configured
+            if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID.apps.googleusercontent.com') {
+                authSection.innerHTML = `
+                    <div class="error" style="max-width: 600px; text-align: left;">
+                        <h3 style="margin-bottom: 15px;">⚠️ Configuration Required</h3>
+                        <p style="margin-bottom: 10px;"><strong>Google Client ID is not configured.</strong></p>
+                        <p style="margin-bottom: 15px;">To enable authentication, please follow these steps:</p>
+                        <ol style="margin-left: 20px; margin-bottom: 15px;">
+                            <li>Go to <a href="https://console.cloud.google.com/" target="_blank" style="color: #667eea;">Google Cloud Console</a></li>
+                            <li>Create a new project or select an existing one</li>
+                            <li>Enable "Google Identity Services" API</li>
+                            <li>Navigate to "APIs & Services" → "Credentials"</li>
+                            <li>Create "OAuth 2.0 Client ID" (Web application type)</li>
+                            <li>Add <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">http://localhost:8000</code> to "Authorized JavaScript origins"</li>
+                            <li>Copy the Client ID (format: <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">xxxxx.apps.googleusercontent.com</code>)</li>
+                            <li>Update <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">GOOGLE_CLIENT_ID</code> at the top of this HTML file</li>
+                        </ol>
+                        <p style="color: #666; font-size: 0.9em;">After updating, refresh the page.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Google Client ID is configured, show sign-in button
+            authSection.innerHTML = `
+                <p class="auth-message">Sign in with your Google account to continue</p>
+                <div id="g_id_onload"
+                     data-client_id="${GOOGLE_CLIENT_ID}"
+                     data-callback="handleCredentialResponse"
+                     data-auto_prompt="false">
+                </div>
+                <div class="g_id_signin"
+                     data-type="standard"
+                     data-size="large"
+                     data-theme="outline"
+                     data-text="sign_in_with"
+                     data-shape="rectangular"
+                     data-logo_alignment="left">
+                </div>
+            `;
+
+            // Re-initialize Google Sign-In if library is loaded
+            if (window.google?.accounts?.id) {
+                google.accounts.id.initialize({
+                    client_id: GOOGLE_CLIENT_ID,
+                    callback: handleCredentialResponse
+                });
+                google.accounts.id.renderButton(
+                    document.querySelector('.g_id_signin'),
+                    {
+                        theme: 'outline',
+                        size: 'large',
+                        text: 'signin_with',
+                        shape: 'rectangular'
+                    }
+                );
+            }
+        }
+
+        // Load token from localStorage on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedToken = localStorage.getItem('idToken');
+            const savedUser = localStorage.getItem('userInfo');
+
+            if (savedToken && savedUser) {
+                idToken = savedToken;
+                userInfo = JSON.parse(savedUser);
+                showUserSection();
+                fetchLinks();
+            } else {
+                // Initialize Google Auth UI
+                initGoogleAuth();
+            }
+        });
+
+        // Handle Google Sign-In response
+        function handleCredentialResponse(response) {
+            idToken = response.credential;
+
+            // Decode JWT to get user info (for display only, validation is server-side)
+            const payload = parseJwt(idToken);
+            userInfo = {
+                email: payload.email,
+                name: payload.name,
+                picture: payload.picture,
+                sub: payload.sub
+            };
+
+            // Save to localStorage
+            localStorage.setItem('idToken', idToken);
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+
+            console.log('Authenticated successfully:', userInfo);
+            showUserSection();
+            fetchLinks();
+        }
+
+        // Parse JWT token (client-side only for display)
+        function parseJwt(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+                atob(base64)
+                    .split('')
+                    .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                    .join('')
+            );
+            return JSON.parse(jsonPayload);
+        }
+
+        // Show user section and hide auth section
+        function showUserSection() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('userSection').style.display = 'block';
+            document.getElementById('userName').textContent = userInfo.name;
+            document.getElementById('userEmail').textContent = userInfo.email;
+            document.getElementById('userPicture').src = userInfo.picture;
+            hideError();
+        }
+
+        // Show auth section and hide user section
+        function showAuthSection() {
+            document.getElementById('authSection').style.display = 'flex';
+            document.getElementById('userSection').style.display = 'none';
+            initGoogleAuth();
+        }
+
+        // Sign out
+        function signOut() {
+            google.accounts.id.disableAutoSelect();
+            idToken = null;
+            userInfo = null;
+            localStorage.removeItem('idToken');
+            localStorage.removeItem('userInfo');
+            showAuthSection();
+            console.log('Signed out');
+        }
+
+        // Show error message
+        function showError(message, isAuthError = false) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+
+            if (isAuthError) {
+                // If authentication error, sign out and show auth section
+                setTimeout(() => {
+                    signOut();
+                }, 2000);
+            }
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.className = 'success';
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => hideError(), 3000);
+        }
+
+        // Hide error/success message
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Make authenticated API request
+        async function apiRequest(endpoint, options = {}) {
+            if (!idToken) {
+                throw new Error('Not authenticated');
+            }
+
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'Authorization': `Bearer ${idToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.status === 401 || response.status === 403) {
+                const data = await response.json().catch(() => ({}));
+                const message = data.error?.message || 'Authentication failed. Please sign in again.';
+                showError(message, true);
+                throw new Error(message);
+            }
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                const message = data.error?.message || `HTTP error! status: ${response.status}`;
+                throw new Error(message);
+            }
+
+            return response.json();
+        }
+
+        // Fetch user's links
+        async function fetchLinks() {
+            const container = document.getElementById('linksContainer');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading your links...</p></div>';
+
+            try {
+                const data = await apiRequest('/admin/links');
+
+                if (data.success && data.data) {
+                    const links = data.data.links || data.data || [];
+                    renderLinks(links);
+
+                    // Update stats
+                    document.getElementById('totalLinks').textContent = links.length;
+                    const totalClicks = links.reduce((sum, link) => sum + (link.clicks || 0), 0);
+                    document.getElementById('totalClicks').textContent = totalClicks;
+                } else {
+                    renderLinks([]);
+                }
+            } catch (error) {
+                console.error('Error fetching links:', error);
+                if (!error.message.includes('Authentication')) {
+                    container.innerHTML = `<div class="error">Failed to load links: ${error.message}</div>`;
+                }
+            }
+        }
+
+        // Render links list
+        function renderLinks(links) {
+            const container = document.getElementById('linksContainer');
+
+            if (links.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        <h3>No links yet</h3>
+                        <p>Create your first short link above!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '<div class="links-list">' + links.map(link => {
+                const shortUrl = `${window.location.origin}/${link.slug || link.id}`;
+                const created = link.created_at ? new Date(link.created_at).toLocaleDateString() : 'Unknown';
+                const clicks = link.clicks || 0;
+
+                return `
+                    <div class="link-item">
+                        <div class="url">${escapeHtml(link.url || link.target_url || 'Unknown URL')}</div>
+                        <div class="short">
+                            <a href="${shortUrl}" target="_blank">${shortUrl}</a>
+                            <button class="copy-btn" onclick="copyToClipboard('${shortUrl}')">📋 Copy</button>
+                        </div>
+                        <div class="meta">
+                            <span>📅 Created: ${created}</span>
+                            <span>👆 Clicks: ${clicks}</span>
+                        </div>
+                        <div class="actions">
+                            <button class="delete-btn" onclick="deleteLink('${link.slug || link.id}')">🗑️ Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('') + '</div>';
+        }
+
+        // Create new short link
+        async function createLink() {
+            const urlInput = document.getElementById('urlInput');
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                showError('Please enter a URL');
+                return;
+            }
+
+            // Basic URL validation
+            try {
+                new URL(url);
+            } catch (e) {
+                showError('Please enter a valid URL (including http:// or https://)');
+                return;
+            }
+
+            try {
+                const data = await apiRequest('/admin/links', {
+                    method: 'POST',
+                    body: JSON.stringify({ url, slug: null })
+                });
+
+                if (data.success) {
+                    showSuccess('✅ Short link created successfully!');
+                    urlInput.value = '';
+                    fetchLinks();
+                } else {
+                    showError(data.error?.message || 'Failed to create link');
+                }
+            } catch (error) {
+                console.error('Error creating link:', error);
+                if (!error.message.includes('Authentication')) {
+                    showError(`Failed to create link: ${error.message}`);
+                }
+            }
+        }
+
+        // Delete link
+        async function deleteLink(slug) {
+            if (!confirm(`Are you sure you want to delete the link "${slug}"?`)) {
+                return;
+            }
+
+            try {
+                const data = await apiRequest(`/admin/links/${slug}`, {
+                    method: 'DELETE'
+                });
+
+                if (data.success) {
+                    showSuccess('✅ Link deleted successfully!');
+                    fetchLinks();
+                } else {
+                    showError(data.error?.message || 'Failed to delete link');
+                }
+            } catch (error) {
+                console.error('Error deleting link:', error);
+                if (!error.message.includes('Authentication')) {
+                    showError(`Failed to delete link: ${error.message}`);
+                }
+            }
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showSuccess('✅ Copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                showError('Failed to copy to clipboard');
+            });
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Allow pressing Enter to create link
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlInput = document.getElementById('urlInput');
+            if (urlInput) {
+                urlInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        createLink();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
