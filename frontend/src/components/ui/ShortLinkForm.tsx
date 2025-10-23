@@ -2,7 +2,7 @@
  * Short Link Form Component
  */
 
-import { Component, createSignal, For, Show } from 'solid-js';
+import { Component, createEffect, createSignal, For, Show } from 'solid-js';
 import { ShortLink } from '../../types';
 import {
     canChangeSlug,
@@ -43,6 +43,18 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
     redirect?: string;
     params?: Record<number, { key?: string; value?: string }>;
   }>({});
+
+  // Auto-add new parameter row when user starts typing in the last row
+  createEffect(() => {
+    const currentParams = params();
+    if (currentParams.length > 0) {
+      const lastParam = currentParams[currentParams.length - 1];
+      // If the last row has any content, add a new empty row
+      if (lastParam.key || lastParam.value) {
+        addParam();
+      }
+    }
+  });
 
   const addParam = () => {
     setParams([...params(), { key: '', value: '' }]);
@@ -169,6 +181,17 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
         </span>
       </div>
 
+      {/* Author (read-only) */}
+      <div class="form-group">
+        <label class="form-label">Author</label>
+        <input
+          type="text"
+          class="form-input"
+          value={props.author}
+          disabled
+        />
+      </div>
+
       {/* Parameters */}
       <div class="form-group">
         <div class="params-header">
@@ -234,17 +257,6 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
           Keys must start with letter/underscore, contain only alphanumeric/underscore (max 50 chars).
           Values max 200 chars.
         </span>
-      </div>
-
-      {/* Author (read-only) */}
-      <div class="form-group">
-        <label class="form-label">Author</label>
-        <input
-          type="text"
-          class="form-input"
-          value={props.author}
-          disabled
-        />
       </div>
 
       {/* Actions */}

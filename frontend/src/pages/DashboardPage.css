@@ -71,6 +71,41 @@
     min-width: auto;
 }
 
+/* Floating Action Button */
+.fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #3B82F6;
+    /* background: #F97316; Orange for better contrast */
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4), 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 100;
+}
+
+.fab .material-icons {
+    font-size: 24px;
+}
+
+.fab:hover {
+    background: #2563EB;
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5), 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.fab:active {
+    transform: scale(1.05);
+}
+
 /* View Toggle */
 .view-controls {
     display: flex;
@@ -151,7 +186,7 @@
     flex-direction: column;
     gap: 0.625rem;
     min-width: 0;
-    max-width: 256px;
+    /* max-width: 256px; */
 }
 
 .link-card:hover {
@@ -300,7 +335,7 @@
 
 /* Table View */
 .table-container {
-    overflow-x: auto;
+    overflow-x: visible;
 }
 
 .links-table {
@@ -747,15 +782,51 @@
     }
 }
 
+/* Medium screens - adjust for button overflow */
+@media (max-width: 1024px) {
+
+    /* Reduce button sizes */
+    .action-buttons .btn-action {
+        width: 28px;
+        height: 28px;
+    }
+
+    .action-buttons .material-icons {
+        font-size: 16px;
+    }
+
+    /* Adjust column widths to prevent overflow */
+    .links-table th:nth-child(1),
+    .links-table td:nth-child(1) {
+        width: 35%;
+    }
+
+    .links-table th:nth-child(2),
+    .links-table td:nth-child(2) {
+        width: 12%;
+    }
+
+    .links-table th:nth-child(3),
+    .links-table td:nth-child(3) {
+        width: 20%;
+    }
+
+    .links-table th:nth-child(4),
+    .links-table td:nth-child(4) {
+        width: 33%;
+    }
+}
+
 @media (max-width: 768px) {
     .dashboard {
         padding: 1rem;
     }
 
-    .dashboard-header {
+    /* .dashboard-header {
         flex-direction: column;
         align-items: flex-start;
-    }
+        gap: 1rem;
+    } */
 
     .dashboard-title {
         font-size: 1.5rem;
@@ -766,11 +837,23 @@
     }
 
     .dashboard-actions {
-        width: 100%;
+        width: auto;
     }
 
-    .dashboard-actions button {
-        flex: 1;
+    .dashboard-actions .btn-danger {
+        flex: 0 0 auto;
+    }
+
+    /* Adjust FAB for mobile */
+    .fab {
+        bottom: 1.5rem;
+        right: 1.5rem;
+        width: 52px;
+        height: 52px;
+    }
+
+    .fab .material-icons {
+        font-size: 22px;
     }
 
     .links-grid {
@@ -785,9 +868,73 @@
 
 @media (max-width: 640px) {
 
-    /* Hide table on small screens, show grid instead */
-    .table-container {
+    /* Hide Updated column on small screens */
+    .links-table th:nth-child(3),
+    .links-table td:nth-child(3) {
         display: none;
+    }
+
+    /* Adjust remaining column widths */
+    .links-table th:nth-child(1),
+    .links-table td:nth-child(1) {
+        width: 50%;
+    }
+
+    .links-table th:nth-child(2),
+    .links-table td:nth-child(2) {
+        width: 15%;
+    }
+
+    .links-table th:nth-child(4),
+    .links-table td:nth-child(4) {
+        width: 35%;
+    }
+}
+
+@media (max-width: 520px) {
+
+    /* Hide Parameters column on smaller screens */
+    .links-table th:nth-child(2),
+    .links-table td:nth-child(2) {
+        display: none;
+    }
+
+    /* Adjust remaining column widths */
+    .links-table th:nth-child(1),
+    .links-table td:nth-child(1) {
+        width: 60%;
+    }
+
+    .links-table th:nth-child(4),
+    .links-table td:nth-child(4) {
+        width: 40%;
+    }
+
+    /* Smaller FAB for small screens */
+    .fab {
+        bottom: 1rem;
+        right: 1rem;
+        width: 48px;
+        height: 48px;
+    }
+
+    .fab .material-icons {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 400px) {
+
+    /* Hide Actions column on very small screens - only slug remains */
+    .links-table th:nth-child(4),
+    .links-table td:nth-child(4) {
+        display: none;
+    }
+
+    /* Slug takes full width */
+    .links-table th:nth-child(1),
+    .links-table td:nth-child(1) {
+        width: 100%;
     }
 }
 

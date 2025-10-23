@@ -184,7 +184,7 @@ const DashboardPage: Component = () => {
   };
 
   const getFullUrl = (slug: string) => {
-    return `${window.location.origin}/${slug}`;
+    return `${window.location.origin}/s/${slug}`;
   };
 
   const copyToClipboard = (text: string) => {
@@ -203,13 +203,6 @@ const DashboardPage: Component = () => {
           </p>
         </div>
         <div class="dashboard-actions">
-          <button
-            class="btn btn-primary"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            <span class="material-icons">add</span>
-            Create Link
-          </button>
           <button
             class="btn btn-danger"
             onClick={handleLogout}
@@ -249,12 +242,6 @@ const DashboardPage: Component = () => {
                 </svg>
                 <h3>No links yet</h3>
                 <p>Create your first link to get started</p>
-                <button
-                  class="btn btn-primary"
-                  onClick={() => setIsCreateModalOpen(true)}
-                >
-                  Create Link
-                </button>
               </div>
             }
           >
@@ -294,6 +281,11 @@ const DashboardPage: Component = () => {
                           <div class="slug-label">Slug</div>
                           <div class="slug-value">
                             <span class="slug-text">{link.slug}</span>
+                            <Show when={link.redirect}>
+                            <div class="link-card-params">
+                                <span class="meta-icon">🔗</span>
+                            </div>
+                            </Show>
                             <Show when={Object.keys(link.params).length > 0}>
                               <span class="slug-badge">
                                 {Object.keys(link.params).length}
@@ -301,11 +293,6 @@ const DashboardPage: Component = () => {
                             </Show>
                           </div>
                         </div>
-                        <Show when={link.redirect}>
-                          <div class="link-card-params">
-                            <span class="meta-icon">🔗</span>
-                          </div>
-                        </Show>
                       </div>
 
                       <div class="link-card-footer">
@@ -386,14 +373,14 @@ const DashboardPage: Component = () => {
                                 onClick={() => copyToClipboard(getFullUrl(link.slug))}
                                 title="Copy full URL"
                               >
-                                �
+                                <span class="material-icons">content_copy</span>
                               </button>
                               <button
                                 class="btn-action"
                                 onClick={() => openEditModal(link)}
                                 title="Edit link"
                               >
-                                ✏️
+                                <span class="material-icons">edit</span>
                               </button>
                               <button
                                 class="btn-action"
@@ -405,7 +392,7 @@ const DashboardPage: Component = () => {
                                     : 'Cannot delete links older than 30 minutes'
                                 }
                               >
-                                🗑️
+                                <span class="material-icons">delete</span>
                               </button>
                             </div>
                           </td>
@@ -419,6 +406,15 @@ const DashboardPage: Component = () => {
           </Show>
         </Show>
       </div>
+
+      {/* Floating Action Button */}
+      <button
+        class="fab"
+        onClick={() => setIsCreateModalOpen(true)}
+        title="Create Link"
+      >
+        <span class="material-icons">add</span>
+      </button>
 
       {/* Create Modal */}
       <Modal
