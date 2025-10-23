@@ -14,6 +14,7 @@ export interface RequestOptions extends RequestInit {
   timeout?: number;
   retries?: number;
   retryDelay?: number;
+  endpoint?: string; // Internal: endpoint for interceptors
 }
 
 /**
@@ -99,14 +100,18 @@ class HttpClient {
   /**
    * Apply request interceptors
    */
-  private async applyRequestInterceptors(config: RequestOptions): Promise<RequestOptions> {
-    let modifiedConfig = config;
+  private async applyRequestInterceptors(config: RequestOptions, endpoint: string): Promise<RequestOptions> {
+    let modifiedConfig: RequestOptions = { ...config, endpoint };
 
     for (const interceptor of this.requestInterceptors) {
-      modifiedConfig = await interceptor(modifiedConfig);
+      const result = await interceptor(modifiedConfig);
+      // Preserve endpoint if not returned by interceptor
+      modifiedConfig = { ...result, endpoint: result.endpoint || endpoint };
     }
 
-    return modifiedConfig;
+    // Remove internal endpoint property before returning
+    const { endpoint: _, ...finalConfig } = modifiedConfig;
+    return finalConfig as RequestOptions;
   }
 
   /**
@@ -137,9 +142,30 @@ class HttpClient {
     if (contentType?.includes('application/json')) {
       const json = await response.json();
 
-      // Handle API error response
+      // Backend always returns either:
+      // Success: { status: "ok", data: T }
+      // Error: { status: "error", error: { code: string, message: string } }
+
+      if (json.status === 'error' && json.error) {
+        // Error response - throw HttpError
+        throw new HttpError(response.status, json.error, json.error.message);
+      }
+
+      if (json.status === 'ok') {
+        // Success response - return normalized format
+        return {
+          success: true,
+          data: json.data,
+        } as ApiResponse<T>;
+      }
+
+      // Fallback for unexpected formats
       if (!response.ok) {
-        throw new HttpError(response.status, json.error, json.error?.message);
+        throw new HttpError(
+          response.status,
+          { code: 'UNKNOWN_ERROR', message: 'Unknown error occurred' },
+          'Unknown error occurred'
+        );
       }
 
       return json as ApiResponse<T>;
@@ -155,27 +181,33 @@ class HttpClient {
    */
   private async requestWithRetry<T>(
     url: string,
+    endpoint: string,
     options: RequestOptions,
     retries = 0,
     retryDelay = 1000
   ): Promise<ApiResponse<T>> {
     try {
       // Apply request interceptors
-      const config = await this.applyRequestInterceptors(options);
+      const config = await this.applyRequestInterceptors(options, endpoint);
 
       // Create abort controller for timeout
       const controller = new AbortController();
       const timeout = config.timeout || this.defaultTimeout;
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+      // Prepare final headers
+      const finalHeaders = {
+        ...API_CONFIG.headers,
+        ...config.headers,
+      };
+
+      console.debug(`[HTTP] ${config.method || 'GET'} ${url}`);
+
       // Make request
       let response = await fetch(url, {
         ...config,
         signal: controller.signal,
-        headers: {
-          ...API_CONFIG.headers,
-          ...config.headers,
-        },
+        headers: finalHeaders,
       });
 
       clearTimeout(timeoutId);
@@ -190,7 +222,7 @@ class HttpClient {
       // Retry on network errors
       if (retries > 0 && (error instanceof TypeError || (error as any).name === 'AbortError')) {
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        return this.requestWithRetry<T>(url, options, retries - 1, retryDelay * 2);
+        return this.requestWithRetry<T>(url, endpoint, options, retries - 1, retryDelay * 2);
       }
 
       // Call error interceptors for HTTP errors
@@ -222,7 +254,7 @@ class HttpClient {
     const { params, retries = 2, retryDelay = 1000, ...fetchOptions } = options;
     const url = this.buildUrl(endpoint, params);
 
-    return this.requestWithRetry<T>(url, fetchOptions, retries, retryDelay);
+    return this.requestWithRetry<T>(url, endpoint, fetchOptions, retries, retryDelay);
   }
 
   /**

@@ -12,18 +12,22 @@ import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { validateStoredToken } from './services/auth.service';
 import { setupAuthInterceptors } from './services/http.auth.setup';
-import { getUser, login, setAuthLoading } from './stores/auth.store';
+import { getUser, initializeAuth, login, setAuthLoading } from './stores/auth.store';
 import './styles/app.css';
 
 /**
  * Admin app with authentication and routing
  */
 const AdminApp: Component = () => {
-  // Setup auth interceptors on mount
+  // Setup auth and restore session on mount
   onMount(async () => {
+    // Initialize auth (restore token from localStorage to memory)
+    initializeAuth();
+
+    // Setup HTTP auth interceptors
     setupAuthInterceptors();
 
-    // Check for stored token and validate
+    // Validate stored token and restore user session
     setAuthLoading(true);
     try {
       const user = await validateStoredToken();
@@ -31,10 +35,11 @@ const AdminApp: Component = () => {
         const token = localStorage.getItem('auth_token');
         if (token) {
           login(user, token);
+          console.log('[App] Session restored:', user.email);
         }
       }
     } catch (error) {
-      console.error('Token validation error:', error);
+      console.error('[App] Token validation error:', error);
     } finally {
       setAuthLoading(false);
     }
