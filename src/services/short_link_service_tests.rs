@@ -27,6 +27,7 @@ mod tests {
             params,
             author: "test_user".to_string(),
             redirect: None,
+            description: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -67,6 +68,7 @@ mod tests {
                 params,
                 author: "test_user".to_string(),
                 redirect: None,
+                description: None,
                 created_at: Utc::now(),
                 updated_at: Utc::now(),
             };
@@ -102,6 +104,7 @@ mod tests {
             params: params.clone(),
             author: "test_user".to_string(),
             redirect: None,
+            description: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -118,6 +121,7 @@ mod tests {
             params,
             author: "updated_user".to_string(),
             redirect: None,
+            description: Some("Updated description".to_string()),
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -147,6 +151,7 @@ mod tests {
             params,
             author: "test_user".to_string(),
             redirect: None,
+            description: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -187,6 +192,7 @@ mod tests {
             params,
             author: "test_user".to_string(),
             redirect: None,
+            description: Some("Test link for click tracking".to_string()),
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };

@@ -36,6 +36,9 @@ pub struct CreateShortLinkRequest {
     /// Optional redirect URL (must be valid HTTPS URL)
     #[schema(example = "https://example.com")]
     pub redirect: Option<String>,
+    /// Optional description (max 500 characters)
+    #[schema(example = "Link to GitHub repository")]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -48,6 +51,8 @@ pub struct ShortLinkResponse {
     pub author: String,
     /// Optional redirect URL
     pub redirect: Option<String>,
+    /// Optional description
+    pub description: Option<String>,
     /// Creation timestamp (RFC3339)
     #[schema(example = "2025-10-22T10:00:00Z")]
     pub created_at: String,
@@ -63,6 +68,7 @@ impl From<ShortLink> for ShortLinkResponse {
             params: link.params,
             author: link.author,
             redirect: link.redirect,
+            description: link.description,
             created_at: link.created_at.to_rfc3339(),
             updated_at: link.updated_at.to_rfc3339(),
         }
@@ -107,6 +113,7 @@ pub async fn post_create_short_link(
         params: payload.params,
         author: payload.author,
         redirect: payload.redirect,
+        description: payload.description,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };
@@ -209,6 +216,7 @@ pub async fn put_update_short_link(
         params: payload.params,
         author: payload.author,
         redirect: payload.redirect,
+        description: payload.description,
         created_at: chrono::Utc::now(), // Will be ignored in update
         updated_at: chrono::Utc::now(),
     };
