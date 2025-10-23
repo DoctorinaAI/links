@@ -1,22 +1,21 @@
 /**
- * Application routes configuration
+ * Admin routes configuration
  */
 
 import type { RouteDefinition } from '@solidjs/router';
 import { lazy } from 'solid-js';
 
 // Lazy-loaded page components
-const HomePage = lazy(() => import('../pages/HomePage'));
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
 
 /**
- * Route definitions
+ * Admin route definitions
  */
 export const routes: RouteDefinition[] = [
   {
     path: '/',
-    component: HomePage,
+    component: DashboardPage,
   },
   {
     path: '/dashboard',
@@ -32,6 +31,5 @@ export const routes: RouteDefinition[] = [
  * Route paths (for type-safe navigation)
  */
 export const ROUTES = {
-  HOME: '/',
-  DASHBOARD: '/dashboard',
+  DASHBOARD: '/',
 } as const;
