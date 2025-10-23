@@ -51,7 +51,7 @@ cargo build --release --bin server
 cargo build --profile release-fast --bin server
 
 # Then run
-./target/release/server.exe --jwt-secret=dev-secret-key-for-local-development --allowed-emails=*@doctorina.com,plugfox@gmail.com  --google-client-id=123-ABC.apps.googleusercontent.com
+./target/release/server --jwt-secret=dev-secret-key-for-local-development --allowed-emails=*@doctorina.com,plugfox@gmail.com --google-client-id=123-ABC.apps.googleusercontent.com
 ```
 
 ### Build Profiles
