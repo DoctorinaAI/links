@@ -1,0 +1,62 @@
+# Cargo configuration for the Links project
+# https://doc.rust-lang.org/cargo/reference/config.html
+
+# Use faster linker on supported platforms
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+# Build configuration
+[build]
+# Use all CPU cores for parallel compilation
+jobs = 0  # 0 = use all cores
+
+# Incremental compilation (faster rebuilds in dev)
+incremental = true
+
+# Show timings for each crate
+#timings = ["html", "json"]
+
+# Network configuration
+[net]
+# Retry failed downloads
+retry = 3
+
+# Git fetch with CLI (faster than libgit2)
+git-fetch-with-cli = true
+
+# Registry configuration
+[registries.crates-io]
+protocol = "sparse"
+
+# Alias for common commands
+[alias]
+# Fast check without codegen
+c = "check"
+
+# Build release
+br = "build --release"
+
+# Build small
+bs = "build --profile release-small"
+
+# Build fast
+bf = "build --profile release-fast"
+
+# Run tests with output
+t = "test -- --nocapture"
+
+# Run with release profile
+rr = "run --release"
+
+# Clean and build
+cb = "clean && cargo build --release"
+
+# Format and clippy
+fc = "fmt --all && cargo clippy --all-targets --all-features"

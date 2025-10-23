@@ -41,6 +41,33 @@ graph TB
 
 ## 🚀 Quick Start
 
+### TL;DR
+
+```sh
+# Standard release build (recommended)
+cargo build --release --bin server
+
+# For fastest runtime performance
+cargo build --profile release-fast --bin server
+
+# Then run
+./target/release/server.exe --jwt-secret=dev-secret-key-for-local-development --allowed-emails=*@doctorina.com,plugfox@gmail.com  --google-client-id=123-ABC.apps.googleusercontent.com
+```
+
+### Build Profiles
+
+The project includes three optimized build profiles:
+
+- **`--release`** (default) - Balanced optimization for size and speed
+- **`--profile release-small`** - Optimized for smallest binary size
+- **`--profile release-fast`** - Optimized for maximum runtime performance
+
+All profiles include:
+- ✅ Full Link-Time Optimization (LTO)
+- ✅ Stripped debug symbols
+- ✅ Panic abort (no unwinding overhead)
+- ✅ Single codegen unit for better optimization
+
 ### Prerequisites
 
 - **Rust** 1.75+ (install from [rustup.rs](https://rustup.rs/))
@@ -387,6 +414,27 @@ Log levels (from most to least verbose):
 ```bash
 cargo run --bin server
 ```
+
+### Build for Production
+
+```bash
+# Standard release build (recommended)
+cargo build --release --bin server
+
+# Or with CPU-specific optimizations (faster but not portable)
+RUSTFLAGS="-C target-cpu=native" cargo build --release --bin server
+
+# Or for smallest binary
+cargo build --profile release-small --bin server
+
+# On Windows PowerShell
+$env:RUSTFLAGS="-C target-cpu=native"; cargo build --release --bin server
+```
+
+**Binary locations:**
+- Release: `./target/release/server.exe`
+- Small: `./target/release-small/server.exe`
+- Fast: `./target/release-fast/server.exe`
 
 ### Run Tests
 

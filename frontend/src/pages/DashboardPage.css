@@ -554,7 +554,7 @@
     display: flex;
     gap: 0.25rem;
     /* Smaller gap for 4 buttons */
-    justify-content: flex-start;
+    justify-content: center;
 }
 
 .btn-action {
