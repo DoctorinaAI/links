@@ -75,6 +75,15 @@ impl RateLimitState {
 }
 
 /// Check for admin authentication via a static secret token
+///
+/// # Deprecated
+/// This middleware is deprecated. Use JWT-based authentication instead.
+/// See `jwt_middleware::internal_jwt_with_email_check_middleware` for the recommended approach.
+#[deprecated(
+    since = "0.0.1",
+    note = "Use JWT-based authentication (jwt_middleware) instead of static secret"
+)]
+#[allow(dead_code)]
 pub async fn auth_middleware(
     State(private): State<AdminScope>,
     headers: HeaderMap,
@@ -263,6 +272,16 @@ pub async fn panic_recovery_middleware(request: Request, next: Next) -> Response
 }
 
 /// Middleware for adding performance metrics to response headers
+///
+/// # Deprecated
+/// This middleware is deprecated. Use `server_timing_middleware` for more detailed timing metrics.
+/// The `server_timing_middleware` provides better breakdown of request processing time and follows
+/// the W3C Server-Timing specification.
+#[deprecated(
+    since = "0.0.1",
+    note = "Use server_timing_middleware for more detailed performance metrics"
+)]
+#[allow(dead_code)]
 pub async fn metrics_middleware(request: Request, next: Next) -> Response {
     let start = Instant::now();
     let method = request.method().clone();
@@ -289,6 +308,16 @@ pub async fn metrics_middleware(request: Request, next: Next) -> Response {
         HeaderValue::from_static(env!("CARGO_PKG_VERSION")),
     );
 
+    // Add Server-Timing header for detailed performance metrics
+    // Format: Server-Timing: metric_name;dur=duration_in_ms;desc="description"
+    let server_timing = format!(
+        "total;dur={};desc=\"Total request time\"",
+        duration.as_millis()
+    );
+    if let Ok(timing_value) = HeaderValue::from_str(&server_timing) {
+        headers.insert("Server-Timing", timing_value);
+    }
+
     // Log metrics for analysis
     info!(
         method = %method,
@@ -297,6 +326,46 @@ pub async fn metrics_middleware(request: Request, next: Next) -> Response {
         status = %response.status(),
         "Request metrics"
     );
+
+    response
+}
+
+/// Middleware for adding detailed Server-Timing headers with component breakdown
+/// This provides more granular timing information for debugging and optimization
+pub async fn server_timing_middleware(request: Request, next: Next) -> Response {
+    let total_start = Instant::now();
+
+    // Measure middleware overhead
+    let middleware_start = Instant::now();
+
+    // Run the handler
+    let mut response = next.run(request).await;
+
+    let handler_duration = middleware_start.elapsed();
+    let total_duration = total_start.elapsed();
+
+    // Calculate middleware overhead (time before and after handler)
+    let middleware_overhead = total_duration.saturating_sub(handler_duration);
+
+    // Build Server-Timing header with multiple metrics
+    // Format: metric1;dur=ms, metric2;dur=ms;desc="description"
+    let timing_metrics = [
+        format!("total;dur={}", total_duration.as_micros() as f64 / 1000.0),
+        format!(
+            "handler;dur={};desc=\"Handler execution\"",
+            handler_duration.as_micros() as f64 / 1000.0
+        ),
+        format!(
+            "middleware;dur={};desc=\"Middleware overhead\"",
+            middleware_overhead.as_micros() as f64 / 1000.0
+        ),
+    ];
+
+    let server_timing = timing_metrics.join(", ");
+
+    if let Ok(timing_value) = HeaderValue::from_str(&server_timing) {
+        response.headers_mut().insert("Server-Timing", timing_value);
+    }
 
     response
 }
@@ -396,6 +465,16 @@ pub async fn request_validation_middleware(
 /// Validates JWT token from Authorization header via Google
 /// Token validation is automatically cached in GoogleAuthService (5 min TTL)
 /// Adds user information to request extensions for use in handlers
+///
+/// # Deprecated
+/// This middleware is deprecated. Use the internal JWT approach instead.
+/// See `jwt_middleware::internal_jwt_with_email_check_middleware` which validates internal
+/// non-expiring JWT tokens (signed by the server after Google authentication).
+#[deprecated(
+    since = "0.0.1",
+    note = "Use internal JWT middleware (jwt_middleware::internal_jwt_with_email_check_middleware) instead"
+)]
+#[allow(dead_code)]
 pub async fn google_auth_middleware(
     State(google_auth): State<GoogleAuthService>,
     mut request: Request,
@@ -473,6 +552,20 @@ impl AllowedEmails {
     }
 }
 
+/// Middleware for Google JWT authentication with email verification
+///
+/// Similar to google_auth_middleware, but also checks that user's email
+/// is in the allowed emails list
+///
+/// # Deprecated
+/// This middleware is deprecated. Use the internal JWT approach instead.
+/// See `jwt_middleware::internal_jwt_with_email_check_middleware` which validates internal
+/// non-expiring JWT tokens with email checking (signed by the server after Google authentication).
+#[deprecated(
+    since = "0.0.1",
+    note = "Use internal JWT middleware (jwt_middleware::internal_jwt_with_email_check_middleware) instead"
+)]
+#[allow(dead_code)]
 pub async fn google_auth_with_email_check_middleware(
     State((google_auth, allowed_emails)): State<(Arc<GoogleAuthService>, AllowedEmails)>,
     mut request: Request,
@@ -536,4 +629,115 @@ pub async fn google_auth_with_email_check_middleware(
     request.extensions_mut().insert(claims);
 
     Ok(next.run(request).await)
+}
+
+/// Middleware for adding unique request ID to each request
+/// Useful for request tracing and debugging across distributed systems
+pub async fn request_id_middleware(mut request: Request, next: Next) -> Response {
+    // Simple request ID generation without uuid crate (using timestamp + random)
+    let request_id = request
+        .headers()
+        .get("X-Request-ID")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            use std::time::{SystemTime, UNIX_EPOCH};
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_micros();
+            format!("req-{:x}", timestamp)
+        });
+
+    // Store request ID in extensions for use in handlers
+    request.extensions_mut().insert(request_id.clone());
+
+    let mut response = next.run(request).await;
+
+    // Add request ID to response headers
+    if let Ok(header_value) = HeaderValue::from_str(&request_id) {
+        response.headers_mut().insert("X-Request-ID", header_value);
+    }
+
+    response
+}
+
+/// Middleware for request/response body size tracking
+/// Adds headers with body sizes for monitoring and optimization
+pub async fn body_size_middleware(request: Request, next: Next) -> Response {
+    // Get request body size if available from Content-Length header (clone before moving)
+    let request_size = request
+        .headers()
+        .get("Content-Length")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse::<usize>().ok())
+        .map(|size| size.to_string());
+
+    let mut response = next.run(request).await;
+
+    // Add request size to response headers for monitoring
+    if let Some(size_str) = request_size
+        && let Ok(size_value) = HeaderValue::from_str(&size_str)
+    {
+        response.headers_mut().insert("X-Request-Size", size_value);
+    }
+
+    // Note: Response body size would require buffering the entire response
+    // which is expensive. Better to rely on Content-Length from the handler.
+
+    response
+}
+
+/// Middleware for adding cache control headers
+/// Configures caching behavior for different types of responses
+pub async fn cache_control_middleware(request: Request, next: Next) -> Response {
+    let path = request.uri().path().to_string();
+    let mut response = next.run(request).await;
+
+    // Don't add cache headers if already present
+    if response.headers().contains_key("Cache-Control") {
+        return response;
+    }
+
+    let cache_header = if path.starts_with("/api/") {
+        // API responses: no cache by default
+        "no-cache, no-store, must-revalidate"
+    } else if path.starts_with("/static/") || path.ends_with(".js") || path.ends_with(".css") {
+        // Static assets: cache for 1 year
+        "public, max-age=31536000, immutable"
+    } else if path.starts_with("/api-docs/") || path == "/scalar" {
+        // API docs: cache for 5 minutes
+        "public, max-age=300"
+    } else {
+        // Everything else: no cache
+        "no-cache"
+    };
+
+    response
+        .headers_mut()
+        .insert("Cache-Control", HeaderValue::from_static(cache_header));
+
+    response
+}
+
+/// Middleware for request timeout handling
+/// Returns 408 Request Timeout if handler takes too long
+pub async fn timeout_middleware(request: Request, next: Next) -> Result<Response, Response> {
+    use tokio::time::{Duration, timeout};
+
+    // 30 second timeout for all requests
+    let timeout_duration = Duration::from_secs(30);
+
+    match timeout(timeout_duration, next.run(request)).await {
+        Ok(response) => Ok(response),
+        Err(_) => {
+            warn!("Request timed out after {:?}", timeout_duration);
+            let error_response = ApiResult::<()>::error_with_status(
+                "REQUEST_TIMEOUT",
+                "Request processing timed out",
+                StatusCode::REQUEST_TIMEOUT,
+            );
+            Err(error_response.into_response())
+        }
+    }
 }

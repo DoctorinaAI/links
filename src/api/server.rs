@@ -163,13 +163,50 @@ impl Server {
                 short_link_service: self.config.short_link_service.clone(),
             });
 
-        // Create the main router/app
+        // Initialize rate limiting (100 requests per 60 seconds per IP)
+        let rate_limit_state = middleware::RateLimitState::new(100, 60);
+
+        // Create the main router/app with comprehensive middleware stack
+        // Middleware layers are applied in REVERSE order (last layer = first to execute)
         let app = Router::new()
             .route("/api-docs/openapi.json", get(openapi_spec))
             .route("/scalar", get(scalar_ui))
             // Mount API v1 under /api/v1 prefix
             .nest("/api/v1", api_v1)
-            // Add CORS middleware with configured origins
+            // Middleware stack (executed in reverse order from bottom to top):
+            // ═══════════════════════════════════════════════════════════════
+            // 1. Panic recovery (outermost - catches panics from all middleware)
+            .layer(axum::middleware::from_fn(
+                middleware::panic_recovery_middleware,
+            ))
+            // 2. Logging (logs all requests with timing, IP, user-agent)
+            .layer(axum::middleware::from_fn(middleware::logging_middleware))
+            // 3. Request timeout (30s limit to prevent hanging requests)
+            .layer(axum::middleware::from_fn(middleware::timeout_middleware))
+            // 4. Cache control headers (no-cache for API, long cache for static)
+            .layer(axum::middleware::from_fn(
+                middleware::cache_control_middleware,
+            ))
+            // 5. Body size tracking (X-Request-Size header)
+            .layer(axum::middleware::from_fn(middleware::body_size_middleware))
+            // 6. Request ID generation (X-Request-ID for tracing)
+            .layer(axum::middleware::from_fn(middleware::request_id_middleware))
+            // 7. Server-Timing headers (detailed performance metrics)
+            .layer(axum::middleware::from_fn(
+                middleware::server_timing_middleware,
+            ))
+            // 8. Security headers (X-Frame-Options, CSP, XSS protection, etc.)
+            .layer(axum::middleware::from_fn(middleware::security_middleware))
+            // 9. Request validation (URI length, HTTP method checks)
+            .layer(axum::middleware::from_fn(
+                middleware::request_validation_middleware,
+            ))
+            // 10. Rate limiting (100 req/min per IP - DDoS protection)
+            .layer(axum::middleware::from_fn_with_state(
+                rate_limit_state,
+                middleware::rate_limit_middleware,
+            ))
+            // 11. CORS (outermost - cross-origin resource sharing)
             .layer(middleware::create_cors_layer(
                 self.config.cors_origins.clone(),
             ));
@@ -183,11 +220,14 @@ impl Server {
         );
 
         // Start the server with graceful shutdown support
-        // Enable ConnectInfo support to get client IP addresses
-        axum::serve(listener, app.into_make_service())
-            .with_graceful_shutdown(shutdown_signal)
-            .await
-            .expect("api server crashed");
+        // Enable ConnectInfo support to get client IP addresses in middleware
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .with_graceful_shutdown(shutdown_signal)
+        .await
+        .expect("api server crashed");
 
         // Right after the server stops, we log that the server has stopped
         info!("api server stopped");
