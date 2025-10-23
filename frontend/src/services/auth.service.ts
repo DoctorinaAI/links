@@ -20,11 +20,14 @@ export const exchangeGoogleToken = async (
   googleToken: string
 ): Promise<TokenExchangeResponse> => {
   const response = await httpClient.post<TokenExchangeResponse>(
-    '/auth/google',
+    '/api/v1/auth/google',
     { token: googleToken }
   );
 
-  if (!response.success || !response.data) {
+  // Handle both 'success' and 'status' fields for backward compatibility
+  const isSuccess = response.success === true || (response as any).status === 'ok';
+
+  if (!isSuccess || !response.data) {
     throw new Error(response.error?.message || 'Token exchange failed');
   }
 
@@ -41,18 +44,21 @@ export const validateStoredToken = async (): Promise<User | null> => {
   }
 
   try {
-    // Decode token to check expiration
+    // Decode token to get user info
     const payload = decodeJWT<InternalJWTPayload>(token);
     if (!payload) {
       authStore.logout();
       return null;
     }
 
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) {
-      authStore.logout();
-      return null;
+    // Note: Our internal tokens are non-expiring, so no exp check needed
+    // If exp exists and is expired, logout
+    if (payload.exp) {
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp < now) {
+        authStore.logout();
+        return null;
+      }
     }
 
     // Token is valid, create user from payload
@@ -63,15 +69,8 @@ export const validateStoredToken = async (): Promise<User | null> => {
       picture: payload.picture,
     };
 
-    // Verify token with backend
-    const response = await httpClient.get<{ user: User }>('/auth/me');
-    if (response.success && response.data) {
-      return response.data.user;
-    }
-
-    // Backend rejected token
-    authStore.logout();
-    return null;
+    // Return user (token is valid until server restart or secret change)
+    return user;
   } catch (error) {
     console.error('Token validation failed:', error);
     authStore.logout();

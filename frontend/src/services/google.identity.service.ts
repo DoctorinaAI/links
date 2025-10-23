@@ -37,12 +37,40 @@ interface GoogleButtonConfig {
 }
 
 /**
+ * Wait for Google Identity Services to load
+ */
+const waitForGoogleLoad = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (window.google) {
+      resolve();
+      return;
+    }
+
+    const checkInterval = setInterval(() => {
+      if (window.google) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 100);
+
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      console.error('Google Identity Services failed to load after 10 seconds');
+      resolve();
+    }, 10000);
+  });
+};
+
+/**
  * Initialize Google Identity Services
  */
-export const initializeGoogleIdentity = (
+export const initializeGoogleIdentity = async (
   clientId: string,
   callback: (response: GoogleCredentialResponse) => void
-): void => {
+): Promise<void> => {
+  await waitForGoogleLoad();
+
   if (!window.google) {
     console.error('Google Identity Services not loaded');
     return;

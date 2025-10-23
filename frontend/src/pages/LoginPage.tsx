@@ -14,21 +14,19 @@ import type { GoogleCredentialResponse } from '../types';
  * Login page component
  */
 const LoginPage: Component = () => {
-  onMount(() => {
-    // Initialize Google Identity Services
-    initializeGoogleIdentity(
+  onMount(async () => {
+    // Initialize Google Identity Services (wait for script to load)
+    await initializeGoogleIdentity(
       APP_CONFIG.googleClientId,
       handleGoogleCallback
     );
 
-    // Render Google Sign-In button
-    setTimeout(() => {
-      renderGoogleButton('google-signin-button', {
-        theme: 'outline',
-        size: 'large',
-        text: 'signin_with',
-      });
-    }, 100);
+    // Render Google Sign-In button after initialization
+    renderGoogleButton('google-signin-button', {
+      theme: 'outline',
+      size: 'large',
+      text: 'signin_with',
+    });
   });
 
   const handleGoogleCallback = async (response: GoogleCredentialResponse) => {
