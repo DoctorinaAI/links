@@ -2,7 +2,7 @@
  * Dashboard Page - Manage short links
  */
 
-import { Component, createSignal, For, onMount, Show } from 'solid-js';
+import { Component, createMemo, createSignal, For, onMount, Show } from 'solid-js';
 import Modal from '../components/ui/Modal';
 import ShortLinkForm from '../components/ui/ShortLinkForm';
 import {
@@ -39,6 +39,34 @@ const DashboardPage: Component = () => {
   const [selectedLink, setSelectedLink] = createSignal<ShortLink | null>(null);
   const [stats, setStats] = createSignal<ClickStatsResponse | null>(null);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [searchQuery, setSearchQuery] = createSignal('');
+
+  // Filtered links based on search query
+  const filteredLinks = createMemo(() => {
+    const query = searchQuery().toLowerCase().trim();
+    if (!query) return links();
+
+    return links().filter(link => {
+      // Search in slug
+      if (link.slug.toLowerCase().includes(query)) return true;
+
+      // Search in author
+      if (link.author.toLowerCase().includes(query)) return true;
+
+      // Search in redirect URL
+      if (link.redirect && link.redirect.toLowerCase().includes(query)) return true;
+
+      // Search in parameter keys
+      const paramKeys = Object.keys(link.params);
+      if (paramKeys.some(key => key.toLowerCase().includes(query))) return true;
+
+      // Search in parameter values
+      const paramValues = Object.values(link.params);
+      if (paramValues.some(value => value.toLowerCase().includes(query))) return true;
+
+      return false;
+    });
+  });
 
   // Save view mode preference
   const toggleViewMode = (mode: ViewMode) => {
@@ -281,6 +309,25 @@ const DashboardPage: Component = () => {
               <div class="links-count">
                 {links().length} {links().length === 1 ? 'link' : 'links'}
               </div>
+              <div class="search-box">
+                <span class="material-icons search-icon">search</span>
+                <input
+                  type="text"
+                  class="search-input"
+                  placeholder="Search links..."
+                  value={searchQuery()}
+                  onInput={(e) => setSearchQuery(e.currentTarget.value)}
+                />
+                <Show when={searchQuery()}>
+                  <button
+                    class="search-clear"
+                    onClick={() => setSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <span class="material-icons">close</span>
+                  </button>
+                </Show>
+              </div>
               <div class="view-toggle">
                 <button
                   class={`view-toggle-btn ${viewMode() === 'grid' ? 'active' : ''}`}
@@ -301,10 +348,25 @@ const DashboardPage: Component = () => {
               </div>
             </div>
 
+            {/* No Results */}
+            <Show when={filteredLinks().length === 0 && searchQuery()}>
+              <div class="empty-state">
+                <span class="material-icons empty-state-icon" style="font-size: 64px; color: #9CA3AF;">search_off</span>
+                <h3>No results found</h3>
+                <p>No links match your search: "{searchQuery()}"</p>
+                <button
+                  class="btn btn-secondary"
+                  onClick={() => setSearchQuery('')}
+                >
+                  Clear search
+                </button>
+              </div>
+            </Show>
+
             {/* Grid View */}
-            <Show when={viewMode() === 'grid'}>
+            <Show when={viewMode() === 'grid' && filteredLinks().length > 0}>
               <div class="links-grid">
-                <For each={links()}>
+                <For each={filteredLinks()}>
                   {(link) => (
                     <div class="link-card" onClick={(e) => handleCardClick(link, e)}>
                       <div class="link-card-header">
@@ -373,7 +435,7 @@ const DashboardPage: Component = () => {
             </Show>
 
             {/* Table View */}
-            <Show when={viewMode() === 'table'}>
+            <Show when={viewMode() === 'table' && filteredLinks().length > 0}>
               <div class="table-container">
                 <table class="links-table">
                   <thead>
@@ -385,7 +447,7 @@ const DashboardPage: Component = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    <For each={links()}>
+                    <For each={filteredLinks()}>
                       {(link) => (
                         <tr onClick={(e) => handleCardClick(link, e)}>
                           <td>
@@ -512,11 +574,9 @@ const DashboardPage: Component = () => {
       >
         <Show when={selectedLink()}>
           <ShortLinkForm
-            link={{
-              ...selectedLink()!,
-              slug: '', // Clear slug for new link
-            }}
             author={user()?.email || ''}
+            initialRedirect={selectedLink()!.redirect}
+            initialParams={selectedLink()!.params}
             onSubmit={handleDuplicate}
             onCancel={() => {
               setIsDuplicateModalOpen(false);

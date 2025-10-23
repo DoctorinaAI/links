@@ -16,6 +16,8 @@ import './ShortLinkForm.css';
 interface ShortLinkFormProps {
   link?: ShortLink;
   author: string;
+  initialRedirect?: string | null;
+  initialParams?: Record<string, string>;
   onSubmit: (data: {
     slug: string;
     params: Record<string, string>;
@@ -31,10 +33,14 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
   const canEditSlug = () => !props.link || canChangeSlug(props.link.created_at);
 
   const [slug, setSlug] = createSignal(props.link?.slug || '');
-  const [redirect, setRedirect] = createSignal(props.link?.redirect || '');
+  const [redirect, setRedirect] = createSignal(
+    props.link?.redirect || props.initialRedirect || ''
+  );
   const [params, setParams] = createSignal<Array<{ key: string; value: string }>>(
     props.link
       ? Object.entries(props.link.params).map(([key, value]) => ({ key, value }))
+      : props.initialParams
+      ? Object.entries(props.initialParams).map(([key, value]) => ({ key, value }))
       : [{ key: '', value: '' }]
   );
 
