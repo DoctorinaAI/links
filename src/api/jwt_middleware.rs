@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{info, warn, debug};
 
 use crate::api::response::ApiResult;
 use crate::services::JwtService;
@@ -149,7 +149,7 @@ pub async fn internal_jwt_with_email_check_middleware(
         return Err(error_response.into_response());
     }
 
-    info!(
+    debug!(
         email = %claims.email,
         sub = %claims.sub,
         provider = %claims.provider,

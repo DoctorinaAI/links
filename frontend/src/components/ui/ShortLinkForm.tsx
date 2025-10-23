@@ -139,7 +139,7 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
         <label class="form-label">
           Slug *
           <Show when={!canEditSlug()}>
-            <span class="form-hint">(Cannot be changed after 30 minutes)</span>
+            <span class="form-hint">(Cannot be changed after creation)</span>
           </Show>
         </label>
         <input

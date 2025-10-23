@@ -35,6 +35,7 @@ const DashboardPage: Component = () => {
   const [isEditModalOpen, setIsEditModalOpen] = createSignal(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = createSignal(false);
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = createSignal(false);
   const [selectedLink, setSelectedLink] = createSignal<ShortLink | null>(null);
   const [stats, setStats] = createSignal<ClickStatsResponse | null>(null);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
@@ -92,6 +93,31 @@ const DashboardPage: Component = () => {
     } catch (error) {
       console.error('Error creating link:', error);
       toastStore.showError('Failed to create link');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDuplicate = async (data: {
+    slug: string;
+    params: Record<string, string>;
+    author: string;
+    redirect: string | null;
+  }) => {
+    setIsSubmitting(true);
+    try {
+      const response = await createShortLink(data);
+      if (response.success) {
+        toastStore.showSuccess('Link duplicated successfully');
+        setIsDuplicateModalOpen(false);
+        setSelectedLink(null);
+        await loadLinks();
+      } else {
+        toastStore.showError(response.error?.message || 'Failed to duplicate link');
+      }
+    } catch (error) {
+      console.error('Error duplicating link:', error);
+      toastStore.showError('Failed to duplicate link');
     } finally {
       setIsSubmitting(false);
     }
@@ -172,6 +198,11 @@ const DashboardPage: Component = () => {
   const openDeleteModal = (link: ShortLink) => {
     setSelectedLink(link);
     setIsDeleteModalOpen(true);
+  };
+
+  const openDuplicateModal = (link: ShortLink) => {
+    setSelectedLink(link);
+    setIsDuplicateModalOpen(true);
   };
 
   const handleCardClick = (link: ShortLink, e: MouseEvent) => {
@@ -309,6 +340,13 @@ const DashboardPage: Component = () => {
                           </button>
                           <button
                             class="btn-action"
+                            onClick={() => openDuplicateModal(link)}
+                            title="Duplicate link"
+                          >
+                            <span class="material-icons">file_copy</span>
+                          </button>
+                          <button
+                            class="btn-action"
                             onClick={() => openEditModal(link)}
                             title="Edit link"
                           >
@@ -374,6 +412,13 @@ const DashboardPage: Component = () => {
                                 title="Copy full URL"
                               >
                                 <span class="material-icons">content_copy</span>
+                              </button>
+                              <button
+                                class="btn-action"
+                                onClick={() => openDuplicateModal(link)}
+                                title="Duplicate link"
+                              >
+                                <span class="material-icons">file_copy</span>
                               </button>
                               <button
                                 class="btn-action"
@@ -448,6 +493,33 @@ const DashboardPage: Component = () => {
             onSubmit={handleEdit}
             onCancel={() => {
               setIsEditModalOpen(false);
+              setSelectedLink(null);
+            }}
+            isSubmitting={isSubmitting()}
+          />
+        </Show>
+      </Modal>
+
+      {/* Duplicate Modal */}
+      <Modal
+        isOpen={isDuplicateModalOpen()}
+        onClose={() => {
+          setIsDuplicateModalOpen(false);
+          setSelectedLink(null);
+        }}
+        title="Duplicate Link"
+        maxWidth="700px"
+      >
+        <Show when={selectedLink()}>
+          <ShortLinkForm
+            link={{
+              ...selectedLink()!,
+              slug: '', // Clear slug for new link
+            }}
+            author={user()?.email || ''}
+            onSubmit={handleDuplicate}
+            onCancel={() => {
+              setIsDuplicateModalOpen(false);
               setSelectedLink(null);
             }}
             isSubmitting={isSubmitting()}

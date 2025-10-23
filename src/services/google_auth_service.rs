@@ -141,7 +141,7 @@ impl GoogleAuthService {
             return Err(anyhow!("Email not verified"));
         }
 
-        info!(
+        debug!(
             email = claims.email.as_deref().unwrap_or("unknown"),
             sub = %claims.sub,
             "Successfully validated Google JWT"

@@ -228,8 +228,8 @@ export function canDeleteLink(createdAt: string): boolean {
 }
 
 /**
- * Check if slug can be changed (< 30 minutes old)
+ * Check if slug can be changed (never allowed)
  */
 export function canChangeSlug(createdAt: string): boolean {
-  return canDeleteLink(createdAt);
+  return false; // Slug cannot be changed after creation
 }
