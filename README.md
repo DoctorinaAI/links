@@ -44,11 +44,8 @@ graph TB
 ### TL;DR
 
 ```sh
-# Standard release build (recommended)
-cargo build --release --bin server
-
-# For fastest runtime performance
-cargo build --profile release-fast --bin server
+# Release build
+cargo build --release
 
 # Then run
 ./target/release/server --jwt-secret="dev-secret-key-for-local-development" --allowed-emails="*@doctorina.com,plugfox@gmail.com" --google-client-id=123-ABC.apps.googleusercontent.com
