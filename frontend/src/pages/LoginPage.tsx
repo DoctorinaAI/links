@@ -57,7 +57,7 @@ const LoginPage: Component = () => {
         </h1>
 
         <p class="login-card__description">
-          Sign in with your Google account to manage and track your links
+          Sign in with your Google account
         </p>
 
         <div
