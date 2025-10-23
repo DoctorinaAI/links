@@ -11,7 +11,7 @@ const NotFoundPage: Component = () => {
     <div class="not-found-page">
       <h1>404</h1>
       <p>Page not found</p>
-      <A href={ROUTES.HOME}>Go to Home</A>
+      <A href={ROUTES.DASHBOARD}>Go to Dashboard</A>
     </div>
   );
 };
