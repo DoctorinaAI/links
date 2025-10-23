@@ -5,6 +5,7 @@
 import { Component, createMemo, createSignal, For, onMount, Show } from 'solid-js';
 import Modal from '../components/ui/Modal';
 import ShortLinkForm from '../components/ui/ShortLinkForm';
+import { UserAvatar } from '../components/ui/UserAvatar';
 import {
     createShortLink,
     deleteShortLink,
@@ -257,17 +258,19 @@ const DashboardPage: Component = () => {
       <div class="dashboard-header">
         <div>
           <h1 class="dashboard-title">Dashboard</h1>
-          <p class="dashboard-subtitle">
+          {/* <p class="dashboard-subtitle">
             Welcome, {user()?.name || 'User'}
-          </p>
+          </p> */}
         </div>
         <div class="dashboard-actions">
-          <button
-            class="btn btn-danger"
-            onClick={handleLogout}
-          >
-            <span class="material-icons">logout</span>
-          </button>
+          <Show when={user()}>
+            {(currentUser) => (
+              <UserAvatar
+                user={currentUser()}
+                onLogout={handleLogout}
+              />
+            )}
+          </Show>
         </div>
       </div>
 
@@ -602,7 +605,13 @@ const DashboardPage: Component = () => {
             Are you sure you want to delete the link <code>{selectedLink()?.slug}</code>?
           </p>
           <p class="delete-warning">
-            This action cannot be undone. All analytics data for this link will be lost.
+            This action cannot be undone.
+            <br />
+            All analytics data for this link will be lost.
+            <br />
+            Current users may still have access to the link.
+            <br />
+            Are you sure you want to proceed?
           </p>
           <div class="delete-actions">
             <button
