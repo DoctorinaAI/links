@@ -14,15 +14,27 @@ interface ModalProps {
 }
 
 const Modal: Component<ModalProps> = (props) => {
-  const handleBackdropClick = (e: MouseEvent) => {
-    if (e.target === e.currentTarget) {
+  let mouseDownTarget: EventTarget | null = null;
+
+  const handleMouseDown = (e: MouseEvent) => {
+    mouseDownTarget = e.target;
+  };
+
+  const handleMouseUp = (e: MouseEvent) => {
+    // Close only if both mousedown and mouseup happened on the backdrop
+    if (mouseDownTarget === e.currentTarget && e.target === e.currentTarget) {
       props.onClose();
     }
+    mouseDownTarget = null;
   };
 
   return (
     <Show when={props.isOpen}>
-      <div class="modal-backdrop" onClick={handleBackdropClick}>
+      <div
+        class="modal-backdrop"
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+      >
         <div
           class="modal-content"
           style={{ 'max-width': props.maxWidth || '600px' }}
