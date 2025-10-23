@@ -25,6 +25,10 @@
     width: 100%;
     max-width: 920px;
     margin: 0 auto;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 /* Header */
@@ -35,6 +39,7 @@
     margin-bottom: 2rem;
     flex-wrap: wrap;
     gap: 1rem;
+    flex-shrink: 0;
 }
 
 .dashboard-title {
@@ -116,6 +121,7 @@
     background: #F9FAFB;
     gap: 1rem;
     flex-wrap: wrap;
+    flex-shrink: 0;
 }
 
 /* Search Box */
@@ -228,6 +234,10 @@
     border-radius: 1rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
     overflow: hidden;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Grid View */
@@ -236,6 +246,8 @@
     grid-template-columns: repeat(auto-fill, minmax(256px, 1fr));
     gap: 1rem;
     padding: 1.5rem;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .link-card {
@@ -398,6 +410,7 @@
 
 /* Table View */
 .table-container {
+    overflow-y: auto;
     overflow-x: visible;
 }
 
@@ -414,7 +427,7 @@
 
 .links-table th {
     padding: 0.75rem 1rem;
-    text-align: left;
+    text-align: center;
     font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -461,11 +474,13 @@
 .links-table th:nth-child(3),
 .links-table td:nth-child(3) {
     width: 18%;
+    text-align: center;
 }
 
 .links-table th:nth-child(4),
 .links-table td:nth-child(4) {
     width: 20%;
+    text-align: center;
 }
 
 /* Slug cell */

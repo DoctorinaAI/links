@@ -440,8 +440,8 @@ const DashboardPage: Component = () => {
                 <table class="links-table">
                   <thead>
                     <tr>
-                      <th>Slug</th>
-                      <th>Parameters</th>
+                      <th style="text-align: left;">Slug</th>
+                      <th>Params</th>
                       <th>Updated</th>
                       <th>Actions</th>
                     </tr>
