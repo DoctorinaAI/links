@@ -115,7 +115,7 @@ Type-safe HTTP client with:
 ```typescript
 import { http } from './utils/http.client';
 
-const response = await http.get<Data>('/api/endpoint');
+const response = await http.get<Data>('/api/v1/method');
 ```
 
 ### Toast Notifications

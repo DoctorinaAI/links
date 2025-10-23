@@ -37,49 +37,49 @@ export interface ResponseMetadata {
  * Short link entity
  */
 export interface ShortLink {
-  id: string;
-  code: string;
-  url: string;
-  title?: string;
-  description?: string;
-  clicks: number;
-  createdAt: string;
-  updatedAt: string;
-  expiresAt?: string;
-  enabled: boolean;
+  slug: string;
+  params: Record<string, string>;
+  author: string;
+  redirect: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
- * Click statistics
+ * List of short links response
  */
-export interface ClickStats {
-  total: number;
-  unique: number;
-  byDate: Record<string, number>;
-  byCountry?: Record<string, number>;
-  byDevice?: Record<string, number>;
+export interface ShortLinksListResponse {
+  links: ShortLink[];
+  count: number;
+}
+
+/**
+ * Click statistics response
+ */
+export interface ClickStatsResponse {
+  slug: string;
+  total_clicks: number;
+  recent_clicks: string[];
 }
 
 /**
  * Create short link request
  */
 export interface CreateShortLinkRequest {
-  url: string;
-  code?: string;
-  title?: string;
-  description?: string;
-  expiresAt?: string;
+  slug: string;
+  params: Record<string, string>;
+  author: string;
+  redirect?: string | null;
 }
 
 /**
  * Update short link request
  */
 export interface UpdateShortLinkRequest {
-  url?: string;
-  title?: string;
-  description?: string;
-  expiresAt?: string;
-  enabled?: boolean;
+  slug: string;
+  params: Record<string, string>;
+  author: string;
+  redirect?: string | null;
 }
 
 /**

@@ -4,12 +4,12 @@
  */
 
 import type {
-    AboutInfo,
     ApiResponse,
-    ClickStats,
+    ClickStatsResponse,
     CreateShortLinkRequest,
     HealthStatus,
     ShortLink,
+    ShortLinksListResponse,
     UpdateShortLinkRequest,
 } from '../types';
 import { http } from '../utils/http.client';
@@ -18,14 +18,21 @@ import { http } from '../utils/http.client';
  * Health check
  */
 export async function checkHealth(): Promise<ApiResponse<HealthStatus>> {
-  return http.get<HealthStatus>('/api/health');
+  return http.get<HealthStatus>('/api/v1/health');
 }
 
 /**
- * Get about information
+ * Get all short links
  */
-export async function getAbout(): Promise<ApiResponse<AboutInfo>> {
-  return http.get<AboutInfo>('/api/about');
+export async function getShortLinks(): Promise<ApiResponse<ShortLinksListResponse>> {
+  return http.get<ShortLinksListResponse>('/api/v1/admin/links');
+}
+
+/**
+ * Get single short link by slug
+ */
+export async function getShortLink(slug: string): Promise<ApiResponse<ShortLink>> {
+  return http.get<ShortLink>(`/api/v1/admin/links/${slug}`);
 }
 
 /**
@@ -34,55 +41,29 @@ export async function getAbout(): Promise<ApiResponse<AboutInfo>> {
 export async function createShortLink(
   data: CreateShortLinkRequest
 ): Promise<ApiResponse<ShortLink>> {
-  return http.post<ShortLink>('/api/links', data);
-}
-
-/**
- * Get all short links
- */
-export async function getShortLinks(params?: {
-  page?: number;
-  perPage?: number;
-}): Promise<ApiResponse<{ links: ShortLink[]; total: number }>> {
-  return http.get<{ links: ShortLink[]; total: number }>('/api/links', { params });
-}
-
-/**
- * Get single short link
- */
-export async function getShortLink(id: string): Promise<ApiResponse<ShortLink>> {
-  return http.get<ShortLink>(`/api/links/${id}`);
+  return http.post<ShortLink>('/api/v1/admin/links', data);
 }
 
 /**
  * Update short link
  */
 export async function updateShortLink(
-  id: string,
+  slug: string,
   data: UpdateShortLinkRequest
 ): Promise<ApiResponse<ShortLink>> {
-  return http.put<ShortLink>(`/api/links/${id}`, data);
+  return http.put<ShortLink>(`/api/v1/admin/links/${slug}`, data);
 }
 
 /**
  * Delete short link
  */
-export async function deleteShortLink(id: string): Promise<ApiResponse<void>> {
-  return http.delete<void>(`/api/links/${id}`);
+export async function deleteShortLink(slug: string): Promise<ApiResponse<void>> {
+  return http.delete<void>(`/api/v1/admin/links/${slug}`);
 }
 
 /**
  * Get click statistics
  */
-export async function getClickStats(id: string): Promise<ApiResponse<ClickStats>> {
-  return http.get<ClickStats>(`/api/links/${id}/stats`);
-}
-
-/**
- * Resolve short link (public)
- */
-export async function resolveShortLink(
-  code: string
-): Promise<ApiResponse<{ url: string }>> {
-  return http.get<{ url: string }>(`/api/resolve/${code}`);
+export async function getClickStats(slug: string): Promise<ApiResponse<ClickStatsResponse>> {
+  return http.get<ClickStatsResponse>(`/api/v1/admin/links/${slug}/stats`);
 }

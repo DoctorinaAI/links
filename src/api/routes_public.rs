@@ -14,7 +14,7 @@ use utoipa::ToSchema;
 /// Checks the health of the application and the database connection
 #[utoipa::path(
     get,
-    path = "/api/health",
+    path = "/api/v1/health",
     tag = "public",
     responses(
         (status = 200, description = "Service is healthy"),
@@ -160,7 +160,7 @@ pub struct AboutInfo {
 /// Returns information about the application, such as version
 #[utoipa::path(
     get,
-    path = "/api/about",
+    path = "/api/v1/about",
     tag = "public",
     responses(
         (status = 200, description = "Application information", body = AboutInfo)
@@ -192,7 +192,7 @@ pub struct ResolveResponse {
 /// This is the main endpoint for redirecting short links
 #[utoipa::path(
     get,
-    path = "/api/link/{slug}",
+    path = "/api/v1/link/{slug}",
     tag = "public",
     params(
         ("slug" = String, Path, description = "Short link identifier")
@@ -229,7 +229,7 @@ pub async fn get_resolve_short_link(
 /// This endpoint should be called when a short link is accessed
 #[utoipa::path(
     post,
-    path = "/api/click/{slug}",
+    path = "/api/v1/click/{slug}",
     tag = "public",
     params(
         ("slug" = String, Path, description = "Short link identifier")
@@ -256,7 +256,7 @@ pub async fn post_click_short_link(
 /// Public: Fallback handler for 404 Not Found
 #[utoipa::path(
     get,
-    path = "/api/404",
+    path = "/api/v1/404",
     tag = "public",
     responses(
         (status = 404, description = "Resource not found")

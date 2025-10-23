@@ -11,7 +11,7 @@ use utoipa::ToSchema;
 /// Private: check autentication handler
 #[utoipa::path(
     get,
-    path = "/api/admin/check",
+    path = "/api/v1/admin/check",
     tag = "admin",
     responses(
         (status = 200, description = "Authentication successful")
@@ -90,7 +90,7 @@ pub struct ClickStatsResponse {
 /// Private: Create a new short link
 #[utoipa::path(
     post,
-    path = "/api/admin/links",
+    path = "/api/v1/admin/links",
     tag = "admin",
     request_body = CreateShortLinkRequest,
     responses(
@@ -124,7 +124,7 @@ pub async fn post_create_short_link(
 /// Private: Get all short links
 #[utoipa::path(
     get,
-    path = "/api/admin/links",
+    path = "/api/v1/admin/links",
     tag = "admin",
     responses(
         (status = 200, description = "List of all short links", body = ShortLinksListResponse),
@@ -154,7 +154,7 @@ pub async fn get_list_short_links(
 /// Private: Get a specific short link by slug
 #[utoipa::path(
     get,
-    path = "/api/admin/links/{slug}",
+    path = "/api/v1/admin/links/{slug}",
     tag = "admin",
     params(
         ("slug" = String, Path, description = "Short link identifier")
@@ -187,7 +187,7 @@ pub async fn get_short_link(
 /// Private: Update a short link
 #[utoipa::path(
     put,
-    path = "/api/admin/links/{slug}",
+    path = "/api/v1/admin/links/{slug}",
     tag = "admin",
     params(
         ("slug" = String, Path, description = "Short link identifier to update")
@@ -240,7 +240,7 @@ pub async fn put_update_short_link(
 /// Private: Delete a short link
 #[utoipa::path(
     delete,
-    path = "/api/admin/links/{slug}",
+    path = "/api/v1/admin/links/{slug}",
     tag = "admin",
     params(
         ("slug" = String, Path, description = "Short link identifier to delete")
@@ -278,7 +278,7 @@ pub async fn delete_short_link(
 /// Private: Get click statistics for a short link
 #[utoipa::path(
     get,
-    path = "/api/admin/links/{slug}/stats",
+    path = "/api/v1/admin/links/{slug}/stats",
     tag = "admin",
     params(
         ("slug" = String, Path, description = "Short link identifier")
