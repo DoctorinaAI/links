@@ -53,7 +53,7 @@ const LoginPage: Component = () => {
         </div>
 
         <h1 class="login-card__title">
-          Links Admin
+          Links
         </h1>
 
         <p class="login-card__description">
