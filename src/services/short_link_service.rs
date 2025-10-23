@@ -199,7 +199,7 @@ impl ShortLinkService {
     pub async fn list_short_links(&self) -> Result<Vec<ShortLink>> {
         let tuples: Vec<ShortLinkTuple> = match self.db.as_ref() {
             Database::SQLite(pool) => {
-                sqlx::query("SELECT slug, params, author, redirect, description, created_at, updated_at FROM links ORDER BY created_at DESC")
+                sqlx::query("SELECT slug, params, author, redirect, description, created_at, updated_at FROM links ORDER BY updated_at DESC")
                     .fetch_all(pool)
                     .await
                     .context("Failed to fetch links")?
@@ -208,7 +208,7 @@ impl ShortLinkService {
                     .collect()
             }
             Database::Postgres(pool) => {
-                sqlx::query("SELECT slug, params, author, redirect, description, created_at, updated_at FROM links ORDER BY created_at DESC")
+                sqlx::query("SELECT slug, params, author, redirect, description, created_at, updated_at FROM links ORDER BY updated_at DESC")
                     .fetch_all(pool)
                     .await
                     .context("Failed to fetch links")?
