@@ -1,6 +1,8 @@
 {
     "version": "2.0.0",
     "tasks": [
+        /* ───── Client ───── */
+        /* ───── Server ───── */
         {
             "label": "rust:install",
             "detail": "Install Rust toolchain using rustup",
