@@ -173,7 +173,7 @@ impl ShortLinkService {
                 sqlx::query("SELECT slug, params, author, redirect, created_at, updated_at FROM links ORDER BY created_at DESC")
                     .fetch_all(pool)
                     .await
-                    .context("Failed to fetch short links")?
+                    .context("Failed to fetch links")?
                     .into_iter()
                     .map(|r| (r.get("slug"), r.get("params"), r.get("author"), r.get("redirect"), r.get("created_at"), r.get("updated_at")))
                     .collect()
@@ -182,7 +182,7 @@ impl ShortLinkService {
                 sqlx::query("SELECT slug, params, author, redirect, created_at, updated_at FROM links ORDER BY created_at DESC")
                     .fetch_all(pool)
                     .await
-                    .context("Failed to fetch short links")?
+                    .context("Failed to fetch links")?
                     .into_iter()
                     .map(|r| (r.get("slug"), r.get("params"), r.get("author"), r.get("redirect"), r.get("created_at"), r.get("updated_at")))
                     .collect()

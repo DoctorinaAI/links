@@ -16,8 +16,11 @@ import { logoutUser } from '../services/auth.service';
 import { getUser } from '../stores/auth.store';
 import { toastStore } from '../stores/toast.store';
 import { ClickStatsResponse, ShortLink } from '../types';
-import { canDeleteLink } from '../utils/validation.utils';
+import { canDeleteLink } from '../utils';
+import { formatFullDate, formatRelativeDate } from '../utils/date.utils';
 import './DashboardPage.css';
+
+type ViewMode = 'grid' | 'table';
 
 const DashboardPage: Component = () => {
   const user = getUser();
@@ -25,6 +28,9 @@ const DashboardPage: Component = () => {
   // State
   const [links, setLinks] = createSignal<ShortLink[]>([]);
   const [loading, setLoading] = createSignal(true);
+  const [viewMode, setViewMode] = createSignal<ViewMode>(
+    (localStorage.getItem('linksViewMode') as ViewMode) || 'grid'
+  );
   const [isCreateModalOpen, setIsCreateModalOpen] = createSignal(false);
   const [isEditModalOpen, setIsEditModalOpen] = createSignal(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
@@ -32,6 +38,12 @@ const DashboardPage: Component = () => {
   const [selectedLink, setSelectedLink] = createSignal<ShortLink | null>(null);
   const [stats, setStats] = createSignal<ClickStatsResponse | null>(null);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
+
+  // Save view mode preference
+  const toggleViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem('linksViewMode', mode);
+  };
 
   // Load links
   const loadLinks = async () => {
@@ -162,9 +174,13 @@ const DashboardPage: Component = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString();
+  const handleCardClick = (link: ShortLink, e: MouseEvent) => {
+    // Don't open if clicking on a button or link
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('a')) {
+      return;
+    }
+    handleViewStats(link);
   };
 
   const getFullUrl = (slug: string) => {
@@ -181,7 +197,7 @@ const DashboardPage: Component = () => {
       {/* Header */}
       <div class="dashboard-header">
         <div>
-          <h1 class="dashboard-title">Short Links Dashboard</h1>
+          <h1 class="dashboard-title">Dashboard</h1>
           <p class="dashboard-subtitle">
             Welcome, {user()?.name || 'User'}
           </p>
@@ -191,13 +207,14 @@ const DashboardPage: Component = () => {
             class="btn btn-primary"
             onClick={() => setIsCreateModalOpen(true)}
           >
-            + Create Link
+            <span class="material-icons">add</span>
+            Create Link
           </button>
           <button
             class="btn btn-danger"
             onClick={handleLogout}
           >
-            Logout
+            <span class="material-icons">logout</span>
           </button>
         </div>
       </div>
@@ -231,7 +248,7 @@ const DashboardPage: Component = () => {
                   />
                 </svg>
                 <h3>No links yet</h3>
-                <p>Create your first short link to get started</p>
+                <p>Create your first link to get started</p>
                 <button
                   class="btn btn-primary"
                   onClick={() => setIsCreateModalOpen(true)}
@@ -241,116 +258,164 @@ const DashboardPage: Component = () => {
               </div>
             }
           >
-            <div class="table-container">
-              <table class="links-table">
-                <thead>
-                  <tr>
-                    <th>Slug</th>
-                    <th>Redirect</th>
-                    <th>Parameters</th>
-                    <th>Author</th>
-                    <th>Created</th>
-                    <th>Updated</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <For each={links()}>
-                    {(link) => (
-                      <tr>
-                        <td>
-                          <div class="slug-cell">
-                            <code class="slug-code">{link.slug}</code>
-                            <button
-                              class="btn-icon-sm"
-                              onClick={() => copyToClipboard(getFullUrl(link.slug))}
-                              title="Copy full URL"
-                            >
-                              <svg
-                                width="16"
-                                height="16"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                        <td>
-                          <Show
-                            when={link.redirect}
-                            fallback={
-                              <span class="text-muted">Landing page</span>
-                            }
-                          >
-                            <a
-                              href={link.redirect!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="redirect-link"
-                            >
-                              {link.redirect}
-                            </a>
-                          </Show>
-                        </td>
-                        <td>
-                          <Show
-                            when={Object.keys(link.params).length > 0}
-                            fallback={
-                              <span class="text-muted">None</span>
-                            }
-                          >
-                            <div class="params-preview">
-                              {Object.keys(link.params).length} parameter(s)
-                            </div>
-                          </Show>
-                        </td>
-                        <td>{link.author}</td>
-                        <td class="text-muted text-sm">{formatDate(link.created_at)}</td>
-                        <td class="text-muted text-sm">{formatDate(link.updated_at)}</td>
-                        <td>
-                          <div class="action-buttons">
-                            <button
-                              class="btn-action"
-                              onClick={() => handleViewStats(link)}
-                              title="View statistics"
-                            >
-                              📊
-                            </button>
-                            <button
-                              class="btn-action"
-                              onClick={() => openEditModal(link)}
-                              title="Edit link"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              class="btn-action"
-                              onClick={() => openDeleteModal(link)}
-                              disabled={!canDeleteLink(link.created_at)}
-                              title={
-                                canDeleteLink(link.created_at)
-                                  ? 'Delete link'
-                                  : 'Cannot delete links older than 30 minutes'
-                              }
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
+            {/* View Controls */}
+            <div class="view-controls">
+              <div class="links-count">
+                {links().length} {links().length === 1 ? 'link' : 'links'}
+              </div>
+              <div class="view-toggle">
+                <button
+                  class={`view-toggle-btn ${viewMode() === 'grid' ? 'active' : ''}`}
+                  onClick={() => toggleViewMode('grid')}
+                  title="Grid view"
+                >
+                  <span class="material-icons">grid_view</span>
+                  Grid
+                </button>
+                <button
+                  class={`view-toggle-btn ${viewMode() === 'table' ? 'active' : ''}`}
+                  onClick={() => toggleViewMode('table')}
+                  title="Table view"
+                >
+                  <span class="material-icons">table_rows</span>
+                  Table
+                </button>
+              </div>
             </div>
+
+            {/* Grid View */}
+            <Show when={viewMode() === 'grid'}>
+              <div class="links-grid">
+                <For each={links()}>
+                  {(link) => (
+                    <div class="link-card" onClick={(e) => handleCardClick(link, e)}>
+                      <div class="link-card-header">
+                        <div class="link-card-slug">
+                          <div class="slug-label">Slug</div>
+                          <div class="slug-value">
+                            <span class="slug-text">{link.slug}</span>
+                            <Show when={Object.keys(link.params).length > 0}>
+                              <span class="slug-badge">
+                                {Object.keys(link.params).length}
+                              </span>
+                            </Show>
+                          </div>
+                        </div>
+                        <Show when={link.redirect}>
+                          <div class="link-card-params">
+                            <span class="meta-icon">🔗</span>
+                          </div>
+                        </Show>
+                      </div>
+
+                      <div class="link-card-footer">
+                        <div class="date-info" title={formatFullDate(link.updated_at)}>
+                          {formatRelativeDate(link.updated_at)}
+                        </div>
+                        <div class="action-buttons-compact">
+                          <button
+                            class="btn-action"
+                            onClick={() => copyToClipboard(getFullUrl(link.slug))}
+                            title="Copy full URL"
+                          >
+                            <span class="material-icons">content_copy</span>
+                          </button>
+                          <button
+                            class="btn-action"
+                            onClick={() => openEditModal(link)}
+                            title="Edit link"
+                          >
+                            <span class="material-icons">edit</span>
+                          </button>
+                          <button
+                            class="btn-action"
+                            onClick={() => openDeleteModal(link)}
+                            disabled={!canDeleteLink(link.created_at)}
+                            title={
+                              canDeleteLink(link.created_at)
+                                ? 'Delete link'
+                                : 'Cannot delete links older than 30 minutes'
+                            }
+                          >
+                            <span class="material-icons">delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </Show>
+
+            {/* Table View */}
+            <Show when={viewMode() === 'table'}>
+              <div class="table-container">
+                <table class="links-table">
+                  <thead>
+                    <tr>
+                      <th>Slug</th>
+                      <th>Parameters</th>
+                      <th>Updated</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={links()}>
+                      {(link) => (
+                        <tr onClick={(e) => handleCardClick(link, e)}>
+                          <td>
+                            <code class="slug-code" title={link.slug}>{link.slug}</code>
+                          </td>
+                          <td>
+                            <Show
+                              when={Object.keys(link.params).length > 0}
+                              fallback={<span class="text-muted">—</span>}
+                            >
+                              <div class="params-preview">
+                                {Object.keys(link.params).length}
+                              </div>
+                            </Show>
+                          </td>
+                          <td class="text-muted text-sm" title={formatFullDate(link.updated_at)}>
+                            {formatRelativeDate(link.updated_at)}
+                          </td>
+                          <td>
+                            <div class="action-buttons">
+                              <button
+                                class="btn-action"
+                                onClick={() => copyToClipboard(getFullUrl(link.slug))}
+                                title="Copy full URL"
+                              >
+                                �
+                              </button>
+                              <button
+                                class="btn-action"
+                                onClick={() => openEditModal(link)}
+                                title="Edit link"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                class="btn-action"
+                                onClick={() => openDeleteModal(link)}
+                                disabled={!canDeleteLink(link.created_at)}
+                                title={
+                                  canDeleteLink(link.created_at)
+                                    ? 'Delete link'
+                                    : 'Cannot delete links older than 30 minutes'
+                                }
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
           </Show>
         </Show>
       </div>
@@ -359,7 +424,7 @@ const DashboardPage: Component = () => {
       <Modal
         isOpen={isCreateModalOpen()}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create Short Link"
+        title="Create Link"
         maxWidth="700px"
       >
         <ShortLinkForm
@@ -377,7 +442,7 @@ const DashboardPage: Component = () => {
           setIsEditModalOpen(false);
           setSelectedLink(null);
         }}
-        title="Edit Short Link"
+        title="Edit Link"
         maxWidth="700px"
       >
         <Show when={selectedLink()}>
@@ -401,7 +466,7 @@ const DashboardPage: Component = () => {
           setIsDeleteModalOpen(false);
           setSelectedLink(null);
         }}
-        title="Delete Short Link"
+        title="Delete Link"
         maxWidth="500px"
       >
         <div class="delete-modal">
@@ -461,27 +526,20 @@ const DashboardPage: Component = () => {
               </div>
             </div>
 
-            <Show when={stats()!.recent_clicks.length > 0}>
-              <div class="stats-section">
-                <h3 class="stats-section-title">Recent Clicks</h3>
-                <ul class="clicks-list">
-                  <For each={stats()!.recent_clicks}>
-                    {(click) => (
-                      <li class="click-item">{formatDate(click)}</li>
-                    )}
-                  </For>
-                </ul>
-              </div>
-            </Show>
-
             <Show when={selectedLink()}>
               <div class="stats-section">
                 <h3 class="stats-section-title">Link Details</h3>
                 <dl class="details-list">
+                  <dt>Slug:</dt>
+                  <dd>
+                    <code>{selectedLink()!.slug}</code>
+                  </dd>
                   <dt>Full URL:</dt>
                   <dd>
                     <code>{getFullUrl(selectedLink()!.slug)}</code>
                   </dd>
+                  <dt>Author:</dt>
+                  <dd>{selectedLink()!.author}</dd>
                   <Show when={selectedLink()!.redirect}>
                     <dt>Redirects to:</dt>
                     <dd>
@@ -494,6 +552,10 @@ const DashboardPage: Component = () => {
                       </a>
                     </dd>
                   </Show>
+                  <dt>Created:</dt>
+                  <dd>{formatFullDate(selectedLink()!.created_at)}</dd>
+                  <dt>Updated:</dt>
+                  <dd>{formatFullDate(selectedLink()!.updated_at)}</dd>
                   <Show when={Object.keys(selectedLink()!.params).length > 0}>
                     <dt>Parameters:</dt>
                     <dd>
@@ -511,6 +573,19 @@ const DashboardPage: Component = () => {
                     </dd>
                   </Show>
                 </dl>
+              </div>
+            </Show>
+
+            <Show when={stats()!.recent_clicks.length > 0}>
+              <div class="stats-section">
+                <h3 class="stats-section-title">Recent Clicks</h3>
+                <ul class="clicks-list">
+                  <For each={stats()!.recent_clicks}>
+                    {(click) => (
+                      <li class="click-item">{formatFullDate(click)}</li>
+                    )}
+                  </For>
+                </ul>
               </div>
             </Show>
           </Show>

@@ -174,7 +174,7 @@ OpenAPI spec available at: `http://localhost:8000/api-docs/openapi.json`
 | `GET` | `/health` | Health check | ❌ |
 | `GET` | `/about` | Service information | ❌ |
 | `POST` | `/auth/google` | Exchange Google JWT for internal token | ❌ |
-| `GET` | `/link/:slug` | Resolve short link | ❌ |
+| `GET` | `/link/:slug` | Resolve link | ❌ |
 | `POST` | `/click/:slug` | Track click event | ❌ |
 
 ### Admin Routes (`/api/v1/admin`)
@@ -183,7 +183,7 @@ OpenAPI spec available at: `http://localhost:8000/api-docs/openapi.json`
 |--------|----------|-------------|---------------|
 | `GET` | `/check` | Auth check | ✅ Internal JWT |
 | `GET` | `/links` | List all user's links | ✅ Internal JWT |
-| `POST` | `/links` | Create new short link | ✅ Internal JWT |
+| `POST` | `/links` | Create new link | ✅ Internal JWT |
 | `GET` | `/links/:slug` | Get link details | ✅ Internal JWT |
 | `PUT` | `/links/:slug` | Update link | ✅ Internal JWT |
 | `DELETE` | `/links/:slug` | Delete link | ✅ Internal JWT |

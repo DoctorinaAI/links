@@ -94,8 +94,8 @@ pub struct ClickStatsResponse {
     tag = "admin",
     request_body = CreateShortLinkRequest,
     responses(
-        (status = 200, description = "Short link created successfully", body = ShortLinkResponse),
-        (status = 500, description = "Failed to create short link")
+        (status = 200, description = "Link created successfully", body = ShortLinkResponse),
+        (status = 500, description = "Failed to create link")
     )
 )]
 pub async fn post_create_short_link(
@@ -127,8 +127,8 @@ pub async fn post_create_short_link(
     path = "/api/v1/admin/links",
     tag = "admin",
     responses(
-        (status = 200, description = "List of all short links", body = ShortLinksListResponse),
-        (status = 500, description = "Failed to list short links")
+        (status = 200, description = "List of all links", body = ShortLinksListResponse),
+        (status = 500, description = "Failed to list links")
     )
 )]
 pub async fn get_list_short_links(
@@ -145,7 +145,7 @@ pub async fn get_list_short_links(
         }
         Err(e) => ApiResult::error_with_status(
             "LIST_FAILED",
-            format!("Failed to list short links: {}", e),
+            format!("Failed to list links: {}", e),
             StatusCode::INTERNAL_SERVER_ERROR,
         ),
     }
@@ -160,9 +160,9 @@ pub async fn get_list_short_links(
         ("slug" = String, Path, description = "Short link identifier")
     ),
     responses(
-        (status = 200, description = "Short link details", body = ShortLinkResponse),
-        (status = 404, description = "Short link not found"),
-        (status = 500, description = "Failed to fetch short link")
+        (status = 200, description = "Link details", body = ShortLinkResponse),
+        (status = 404, description = "Link not found"),
+        (status = 500, description = "Failed to fetch link")
     )
 )]
 pub async fn get_short_link(
@@ -173,12 +173,12 @@ pub async fn get_short_link(
         Ok(Some(link)) => ApiResult::success(link.into()),
         Ok(None) => ApiResult::error_with_status(
             "NOT_FOUND",
-            format!("Short link '{}' not found", slug),
+            format!("Link '{}' not found", slug),
             StatusCode::NOT_FOUND,
         ),
         Err(e) => ApiResult::error_with_status(
             "FETCH_FAILED",
-            format!("Failed to fetch short link: {}", e),
+            format!("Failed to fetch link: {}", e),
             StatusCode::INTERNAL_SERVER_ERROR,
         ),
     }
@@ -190,13 +190,13 @@ pub async fn get_short_link(
     path = "/api/v1/admin/links/{slug}",
     tag = "admin",
     params(
-        ("slug" = String, Path, description = "Short link identifier to update")
+        ("slug" = String, Path, description = "Link identifier to update")
     ),
     request_body = CreateShortLinkRequest,
     responses(
-        (status = 200, description = "Short link updated successfully", body = ShortLinkResponse),
-        (status = 404, description = "Short link not found"),
-        (status = 500, description = "Failed to update short link")
+        (status = 200, description = "Link updated successfully", body = ShortLinkResponse),
+        (status = 404, description = "Link not found"),
+        (status = 500, description = "Failed to update link")
     )
 )]
 pub async fn put_update_short_link(

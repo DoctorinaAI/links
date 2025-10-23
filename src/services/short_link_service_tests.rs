@@ -81,7 +81,7 @@ mod tests {
         let links = service
             .list_short_links()
             .await
-            .expect("Failed to list short links");
+            .expect("Failed to list of links");
         assert_eq!(links.len(), 3);
     }
 
