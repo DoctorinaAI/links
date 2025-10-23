@@ -7,6 +7,18 @@
     --color-primary: #667eea;
     --color-primary-dark: #5a67d8;
     --color-primary-light: #7c3aed;
+    --color-primary-bg: #6b7fd7;
+
+    /* Login Page Specific */
+    --login-card-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    --login-icon-shadow: 0 12px 28px rgba(102, 126, 234, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+    --login-text-heading: #2d3748;
+    --login-text-body: #718096;
+    --login-text-muted: #a0aec0;
+    --login-border: #e2e8f0;
+    --login-accent-bg: rgba(102, 126, 234, 0.05);
+    --login-accent-bg-hover: rgba(102, 126, 234, 0.1);
+    --login-spinner-border: rgba(102, 126, 234, 0.2);
 
     /* Colors - Secondary */
     --color-secondary: #764ba2;

@@ -8,7 +8,9 @@ import { APP_CONFIG } from '../config/app.config';
 import { handleGoogleSignIn } from '../services/auth.service';
 import { initializeGoogleIdentity, renderGoogleButton } from '../services/google.identity.service';
 import { getAuthLoading } from '../stores/auth.store';
+import { toastStore } from '../stores/toast.store';
 import type { GoogleCredentialResponse } from '../types';
+import './LoginPage.css';
 
 /**
  * Login page component
@@ -32,57 +34,54 @@ const LoginPage: Component = () => {
   const handleGoogleCallback = async (response: GoogleCredentialResponse) => {
     try {
       await handleGoogleSignIn(response.credential);
+      toastStore.showSuccess('Successfully signed in!');
     } catch (error) {
       console.error('Sign-in error:', error);
-      alert('Failed to sign in. Please try again.');
+      toastStore.showError('Failed to sign in. Please try again.');
     }
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      'align-items': 'center',
-      'justify-content': 'center',
-      'min-height': '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    }}>
-      <div style={{
-        background: 'white',
-        padding: '3rem',
-        'border-radius': '1rem',
-        'box-shadow': '0 20px 60px rgba(0,0,0,0.3)',
-        'text-align': 'center',
-        'max-width': '400px',
-        width: '100%',
-      }}>
-        <h1 style={{
-          'font-size': '2rem',
-          'margin-bottom': '0.5rem',
-          color: '#667eea',
-        }}>
+    <div class="login-container">
+      <div class="login-card">
+        {/* Decorative corner accent */}
+        <div class="login-card__accent" />
+
+        {/* Logo/Icon with subtle animation */}
+        <div class="login-card__icon">
+          🔗
+        </div>
+
+        <h1 class="login-card__title">
           Links Admin
         </h1>
-        <p style={{
-          color: '#718096',
-          'margin-bottom': '2rem',
-        }}>
-          Sign in to manage your links
+
+        <p class="login-card__description">
+          Sign in with your Google account to manage and track your short links
         </p>
 
         <div
           id="google-signin-button"
-          style={{
-            display: 'flex',
-            'justify-content': 'center',
-            'margin-bottom': '1rem',
-          }}
+          class="login-card__button-container"
         />
 
         {getAuthLoading()() && (
-          <p style={{ color: '#667eea', 'margin-top': '1rem' }}>
-            Signing in...
-          </p>
+          <div class="login-card__loading">
+            <div class="login-card__spinner" />
+            <span>Signing you in...</span>
+          </div>
         )}
+
+        {/* Footer */}
+
+        {/* <div class="login-card__footer">
+          <p class="login-card__footer-text">
+            By signing in, you agree to our{' '}
+            <span class="login-card__footer-link">Terms of Service</span>
+            {' '}and{' '}
+            <span class="login-card__footer-link">Privacy Policy</span>
+          </p>
+        </div> */}
       </div>
     </div>
   );

@@ -1,0 +1,123 @@
+/**
+ * Login Page Styles
+ * Using CSS variables from variables.css for theming support
+ */
+
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: var(--spacing-6);
+}
+
+.login-card {
+    background: var(--color-white);
+    padding: var(--spacing-12) var(--spacing-10) var(--spacing-10);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--login-card-shadow);
+    text-align: center;
+    max-width: 440px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-card__accent {
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-radius: 50%;
+}
+
+.login-card__icon {
+    width: 88px;
+    height: 88px;
+    margin: 0 auto var(--spacing-6);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    box-shadow: var(--login-icon-shadow);
+    position: relative;
+    z-index: 1;
+}
+
+.login-card__title {
+    font-size: var(--font-size-4xl);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-3);
+    color: var(--login-text-heading);
+    letter-spacing: -0.02em;
+}
+
+.login-card__description {
+    color: var(--login-text-body);
+    font-size: 0.95rem;
+    margin-bottom: var(--spacing-10);
+    line-height: 1.6;
+    max-width: 340px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.login-card__button-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+.login-card__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-3);
+    margin-top: var(--spacing-6);
+    padding: var(--spacing-4);
+    background: var(--login-accent-bg);
+    border-radius: var(--radius-md);
+    color: var(--color-primary);
+    font-size: 0.95rem;
+    font-weight: var(--font-weight-medium);
+}
+
+.login-card__spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--login-spinner-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.login-card__footer {
+    margin-top: var(--spacing-10);
+    padding-top: var(--spacing-8);
+    border-top: 1px solid var(--login-border);
+}
+
+.login-card__footer-text {
+    color: var(--login-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.6;
+}
+
+.login-card__footer-link {
+    color: var(--color-primary);
+    cursor: pointer;
+}
+
+.login-card__footer-link:hover {
+    text-decoration: underline;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

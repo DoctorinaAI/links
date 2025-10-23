@@ -5,12 +5,14 @@
 import { Component } from 'solid-js';
 import { logoutUser } from '../services/auth.service';
 import { getUser } from '../stores/auth.store';
+import { toastStore } from '../stores/toast.store';
 
 const DashboardPage: Component = () => {
   const user = getUser();
 
   const handleLogout = () => {
     logoutUser();
+    toastStore.showInfo('You have been logged out');
   };
 
   return (
