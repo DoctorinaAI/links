@@ -41,6 +41,7 @@ export interface ShortLink {
   params: Record<string, string>;
   author: string;
   redirect: string | null;
+  description?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +71,7 @@ export interface CreateShortLinkRequest {
   params: Record<string, string>;
   author: string;
   redirect?: string | null;
+  description?: string | null;
 }
 
 /**
@@ -80,6 +82,7 @@ export interface UpdateShortLinkRequest {
   params: Record<string, string>;
   author: string;
   redirect?: string | null;
+  description?: string | null;
 }
 
 /**

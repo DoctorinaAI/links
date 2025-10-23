@@ -6,6 +6,7 @@ import { Component, createEffect, createSignal, For, Show } from 'solid-js';
 import { ShortLink } from '../../types';
 import {
     canChangeSlug,
+    validateDescription,
     validateParamKey,
     validateParamValue,
     validateRedirect,
@@ -17,12 +18,14 @@ interface ShortLinkFormProps {
   link?: ShortLink;
   author: string;
   initialRedirect?: string | null;
+  initialDescription?: string | null;
   initialParams?: Record<string, string>;
   onSubmit: (data: {
     slug: string;
     params: Record<string, string>;
     author: string;
     redirect: string | null;
+    description: string | null;
   }) => void;
   onCancel: () => void;
   isSubmitting: boolean;
@@ -36,6 +39,9 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
   const [redirect, setRedirect] = createSignal(
     props.link?.redirect || props.initialRedirect || ''
   );
+  const [description, setDescription] = createSignal(
+    props.link?.description || props.initialDescription || ''
+  );
   const [params, setParams] = createSignal<Array<{ key: string; value: string }>>(
     props.link
       ? Object.entries(props.link.params).map(([key, value]) => ({ key, value }))
@@ -47,6 +53,7 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
   const [errors, setErrors] = createSignal<{
     slug?: string;
     redirect?: string;
+    description?: string;
     params?: Record<number, { key?: string; value?: string }>;
   }>({});
 
@@ -89,6 +96,12 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
     const redirectValidation = validateRedirect(redirect());
     if (!redirectValidation.valid) {
       newErrors.redirect = redirectValidation.error;
+    }
+
+    // Validate description
+    const descriptionValidation = validateDescription(description());
+    if (!descriptionValidation.valid) {
+      newErrors.description = descriptionValidation.error;
     }
 
     // Validate params
@@ -135,6 +148,7 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
       params: paramsObject,
       author: props.author,
       redirect: redirect().trim() || null,
+      description: description().trim() || null,
     });
   };
 
@@ -184,6 +198,28 @@ const ShortLinkForm: Component<ShortLinkFormProps> = (props) => {
         </Show>
         <span class="form-hint">
           Must be a valid HTTPS URL. Leave empty to use default landing page.
+        </span>
+      </div>
+
+      {/* Description */}
+      <div class="form-group">
+        <label class="form-label">
+          Description (Optional)
+        </label>
+        <textarea
+          class="form-input"
+          classList={{ 'form-input-error': !!errors().description }}
+          value={description()}
+          onInput={(e) => setDescription(e.currentTarget.value)}
+          placeholder="Add a description for this link..."
+          rows={3}
+          maxLength={500}
+        />
+        <Show when={errors().description}>
+          <span class="form-error">{errors().description}</span>
+        </Show>
+        <span class="form-hint">
+          Optional description (max 500 characters)
         </span>
       </div>
 

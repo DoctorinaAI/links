@@ -34,6 +34,18 @@
     font-size: 0.875rem;
     transition: all 0.15s ease;
     font-family: inherit;
+    resize: vertical;
+    min-height: 2.5rem;
+}
+
+.form-input[type="text"],
+.form-input[type="url"] {
+    resize: none;
+}
+
+textarea.form-input {
+    line-height: 1.5;
+    min-height: 5rem;
 }
 
 .form-input:focus {

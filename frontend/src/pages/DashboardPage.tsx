@@ -391,6 +391,12 @@ const DashboardPage: Component = () => {
                         </div>
                       </div>
 
+                      <Show when={link.description}>
+                        <div class="link-card-description">
+                          <p>{link.description}</p>
+                        </div>
+                      </Show>
+
                       <div class="link-card-footer">
                         <div class="date-info" title={formatFullDate(link.updated_at)}>
                           {formatRelativeDate(link.updated_at)}
@@ -403,6 +409,15 @@ const DashboardPage: Component = () => {
                           >
                             <span class="material-icons">content_copy</span>
                           </button>
+                          <Show when={link.description}>
+                            <button
+                              class="btn-action"
+                              onClick={() => copyToClipboard(link.description!)}
+                              title="Copy description"
+                            >
+                              📋
+                            </button>
+                          </Show>
                           <button
                             class="btn-action"
                             onClick={() => openDuplicateModal(link)}
@@ -444,6 +459,7 @@ const DashboardPage: Component = () => {
                   <thead>
                     <tr>
                       <th style="text-align: left;">Slug</th>
+                      <th>Description</th>
                       <th>Params</th>
                       <th>Updated</th>
                       <th>Actions</th>
@@ -455,6 +471,18 @@ const DashboardPage: Component = () => {
                         <tr onClick={(e) => handleCardClick(link, e)}>
                           <td>
                             <code class="slug-code" title={link.slug}>{link.slug}</code>
+                          </td>
+                          <td>
+                            <Show
+                              when={link.description}
+                              fallback={<span class="text-muted">—</span>}
+                            >
+                              <div class="description-preview" title={link.description!}>
+                                {link.description!.length > 50
+                                  ? link.description!.substring(0, 50) + '...'
+                                  : link.description}
+                              </div>
+                            </Show>
                           </td>
                           <td>
                             <Show
@@ -478,6 +506,15 @@ const DashboardPage: Component = () => {
                               >
                                 <span class="material-icons">content_copy</span>
                               </button>
+                              <Show when={link.description}>
+                                <button
+                                  class="btn-action"
+                                  onClick={() => copyToClipboard(link.description!)}
+                                  title="Copy description"
+                                >
+                                  📋
+                                </button>
+                              </Show>
                               <button
                                 class="btn-action"
                                 onClick={() => openDuplicateModal(link)}
@@ -579,6 +616,7 @@ const DashboardPage: Component = () => {
           <ShortLinkForm
             author={user()?.email || ''}
             initialRedirect={selectedLink()!.redirect}
+            initialDescription={selectedLink()!.description}
             initialParams={selectedLink()!.params}
             onSubmit={handleDuplicate}
             onCancel={() => {
@@ -677,6 +715,21 @@ const DashboardPage: Component = () => {
                   </dd>
                   <dt>Author:</dt>
                   <dd>{selectedLink()!.author}</dd>
+                  <Show when={selectedLink()!.description}>
+                    <dt>Description:</dt>
+                    <dd>
+                      <div class="description-display">
+                        <p>{selectedLink()!.description}</p>
+                        <button
+                          class="btn btn-icon"
+                          onClick={() => copyToClipboard(selectedLink()!.description!)}
+                          title="Copy description"
+                        >
+                          📋
+                        </button>
+                      </div>
+                    </dd>
+                  </Show>
                   <Show when={selectedLink()!.redirect}>
                     <dt>Redirects to:</dt>
                     <dd>

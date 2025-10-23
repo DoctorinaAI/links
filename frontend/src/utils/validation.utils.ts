@@ -218,6 +218,27 @@ export function validateRedirect(url: string | null | undefined): { valid: boole
 }
 
 /**
+ * Validate description
+ * Optional field with reasonable length limit
+ */
+export function validateDescription(description: string | null | undefined): { valid: boolean; error?: string } {
+  if (!description || description.trim().length === 0) {
+    return { valid: true }; // Description is optional
+  }
+
+  const trimmed = description.trim();
+
+  if (trimmed.length > 500) {
+    return {
+      valid: false,
+      error: 'Description must be less than 500 characters'
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
  * Check if link can be deleted (< 30 minutes old)
  */
 export function canDeleteLink(createdAt: string): boolean {
