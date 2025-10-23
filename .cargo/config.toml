@@ -9,13 +9,14 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
+# macOS doesn't support lld, use default system linker
 [target.aarch64-apple-darwin]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]  # Commented out - lld not supported on macOS
 
 # Build configuration
 [build]
 # Use all CPU cores for parallel compilation
-jobs = 0  # 0 = use all cores
+# jobs = 0  # 0 = use all cores (commented out due to cargo limitation)
 
 # Incremental compilation (faster rebuilds in dev)
 incremental = true

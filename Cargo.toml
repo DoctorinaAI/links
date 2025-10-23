@@ -21,18 +21,21 @@ name = "server"
 path = "bin/server.rs"
 
 # cargo run --release
+# Default binary target
+# ~ 7092592 bytes or ~6.7 MB
 [profile.release]
-opt-level = 3           # Maximum optimization
-lto = "fat"             # Full Link Time Optimization
-codegen-units = 1       # Better optimization, slower compile
-panic = "abort"         # Smaller binary, no unwinding
-strip = true            # Remove debug symbols
+opt-level = 3     # Maximum optimization
+lto = "fat"       # Full Link Time Optimization
+codegen-units = 1 # Better optimization, slower compile
+panic = "abort"   # Smaller binary, no unwinding
+strip = true      # Remove debug symbols
 
 # cargo build --profile release-small
 # For smallest binary size (slower runtime)
+# ~ 4281344 bytes or ~4.1 MB
 [profile.release-small]
 inherits = "release"
-opt-level = "z"         # Optimize for size
+opt-level = "z"      # Optimize for size
 lto = "fat"
 codegen-units = 1
 panic = "abort"
@@ -40,6 +43,7 @@ strip = true
 
 # cargo build --profile release-fast
 # For fastest runtime (larger binary)
+# ~ 7092592 bytes or ~6.7 MB
 [profile.release-fast]
 inherits = "release"
 opt-level = 3
