@@ -97,6 +97,17 @@ pub struct Config {
     )]
     pub google_client_id: String,
 
+    /// JWT secret key for signing internal tokens (CLI > ENV > default)
+    /// Should be at least 32 characters long for security
+    #[arg(
+        short = 'j',
+        long,
+        env = "CONFIG_JWT_SECRET",
+        aliases = ["jwt", "secret", "token-secret", "signing-key"],
+        help = "JWT secret key for signing tokens (min 32 chars recommended)"
+    )]
+    pub jwt_secret: Option<String>,
+
     /// Allowed email addresses or domain wildcards for authentication (CLI > ENV > default)
     /// Supports wildcards like "*@example.com"
     #[arg(

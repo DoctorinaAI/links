@@ -474,7 +474,7 @@ impl AllowedEmails {
 }
 
 pub async fn google_auth_with_email_check_middleware(
-    State((google_auth, allowed_emails)): State<(GoogleAuthService, AllowedEmails)>,
+    State((google_auth, allowed_emails)): State<(Arc<GoogleAuthService>, AllowedEmails)>,
     mut request: Request,
     next: Next,
 ) -> Result<Response, Response> {

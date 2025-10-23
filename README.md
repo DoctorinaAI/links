@@ -18,19 +18,25 @@ A high-performance URL shortener service built with Rust and Axum, featuring Goo
 
 ```mermaid
 graph TB
-    Client[Web Browser] -->|HTTPS| Server[Axum Web Server]
-    Server -->|JWT Validation| Google[Google OAuth]
-    Server -->|Store/Retrieve| DB[(SQLite/PostgreSQL)]
+    Client[Web Browser] -->|1. Google Sign-In| Google[Google OAuth]
+    Google -->|2. Google JWT| Client
+    Client -->|3. Exchange Token<br/>POST /auth/google| Server[Axum Web Server]
+    Server -->|4. Validate| Google
+    Server -->|5. Internal JWT<br/>non-expiring| Client
+    Client -->|6. API Requests<br/>with JWT| Server
+    Server -->|7. Store/Retrieve| DB[(SQLite/PostgreSQL)]
 
     subgraph "API v1"
+        Auth[Auth Routes<br/>/auth/google]
         Public[Public Routes<br/>/health, /link/:slug]
         Admin[Admin Routes<br/>/admin/links]
     end
 
+    Server --> Auth
     Server --> Public
     Server --> Admin
 
-    Admin -->|Requires| Auth[Google Auth Middleware]
+    Admin -->|Requires| AuthMiddleware[JWT Auth Middleware]
 ```
 
 ## 🚀 Quick Start
@@ -91,6 +97,14 @@ CONFIG_DATABASE_CONNECTION=sqlite://data/links.db?mode=rwc
 # This is required for the server to start
 CONFIG_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 
+# JWT Secret Key (OPTIONAL but RECOMMENDED for production)
+# Used to sign internal non-expiring JWT tokens
+# Minimum 16 characters, recommended 32+ for security
+# If not set or too short, a random secret will be generated on startup
+# WARNING: Changing this will invalidate all existing user sessions
+# Generate with: openssl rand -base64 32
+CONFIG_JWT_SECRET=your-secret-key-at-least-32-characters-long-change-me-in-production
+
 # Email Access Control (OPTIONAL)
 # Comma-separated list of allowed email addresses or domain wildcards
 # Leave empty to allow all authenticated Google users
@@ -121,6 +135,7 @@ CONFIG_CORS_ORIGINS=
   --address 0.0.0.0:8000 \
   --database-connection "sqlite://data/links.db?mode=rwc" \
   --google-client-id "your-client-id.apps.googleusercontent.com" \
+  --jwt-secret "your-secret-key-at-least-32-characters-long" \
   --allowed-emails "admin@example.com,*@company.com" \
   --cors-origins "https://example.com,https://app.example.com"
 ```
@@ -158,6 +173,7 @@ OpenAPI spec available at: `http://localhost:8000/api-docs/openapi.json`
 |--------|----------|-------------|---------------|
 | `GET` | `/health` | Health check | ❌ |
 | `GET` | `/about` | Service information | ❌ |
+| `POST` | `/auth/google` | Exchange Google JWT for internal token | ❌ |
 | `GET` | `/link/:slug` | Resolve short link | ❌ |
 | `POST` | `/click/:slug` | Track click event | ❌ |
 
@@ -165,13 +181,13 @@ OpenAPI spec available at: `http://localhost:8000/api-docs/openapi.json`
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| `GET` | `/check` | Auth check | ✅ Google |
-| `GET` | `/links` | List all user's links | ✅ Google |
-| `POST` | `/links` | Create new short link | ✅ Google |
-| `GET` | `/links/:slug` | Get link details | ✅ Google |
-| `PUT` | `/links/:slug` | Update link | ✅ Google |
-| `DELETE` | `/links/:slug` | Delete link | ✅ Google |
-| `GET` | `/links/:slug/stats` | Get click statistics | ✅ Google |
+| `GET` | `/check` | Auth check | ✅ Internal JWT |
+| `GET` | `/links` | List all user's links | ✅ Internal JWT |
+| `POST` | `/links` | Create new short link | ✅ Internal JWT |
+| `GET` | `/links/:slug` | Get link details | ✅ Internal JWT |
+| `PUT` | `/links/:slug` | Update link | ✅ Internal JWT |
+| `DELETE` | `/links/:slug` | Delete link | ✅ Internal JWT |
+| `GET` | `/links/:slug/stats` | Get click statistics | ✅ Internal JWT |
 
 ## 🔐 Authentication
 
@@ -186,13 +202,62 @@ sequenceDiagram
 
     User->>Browser: Click "Sign in with Google"
     Browser->>Google: Request ID Token
-    Google->>Browser: Return JWT (ID Token)
-    Browser->>Server: API Request with JWT
+    Google->>Browser: Return JWT (Google ID Token)
+    Browser->>Server: POST /api/v1/auth/google<br/>{token: "google-jwt"}
     Server->>Google: Validate JWT (fetch public keys)
     Google->>Server: Public keys (cached 1h)
     Server->>Server: Verify signature & claims
+    Server->>Server: Generate internal JWT<br/>(non-expiring, signed with secret)
+    Server->>Browser: {token: "internal-jwt", user: {...}}
+    Browser->>Browser: Store internal JWT
+    Browser->>Server: API requests with<br/>Authorization: Bearer internal-jwt
+    Server->>Server: Verify internal JWT
     Server->>Browser: Authenticated response
 ```
+
+### Token Exchange
+
+The authentication flow uses a two-step token exchange:
+
+1. **Google Authentication**: User signs in with Google and receives a Google ID Token (JWT)
+2. **Token Exchange**: Frontend sends Google JWT to `/api/v1/auth/google`
+3. **Validation**: Server validates Google JWT with Google's public keys (cached for 1 hour)
+4. **Internal Token**: Server generates a **non-expiring** internal JWT signed with secret key
+5. **API Access**: Frontend uses internal JWT for all subsequent API requests
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/google \
+  -H "Content-Type: application/json" \
+  -d '{"token": "eyJhbGciOiJSUzI1NiIsImtpZCI6..."}'
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "123456789",
+      "provider": "google",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "picture": "https://lh3.googleusercontent.com/a/..."
+    }
+  }
+}
+```
+
+**Internal JWT Claims:**
+- `sub` - User ID from Google
+- `provider` - Authentication provider (always "google")
+- `email` - User's email address
+- `email_verified` - Email verification status
+- `name` - User's full name
+- `picture` - Profile picture URL
+- `iat` - Issued at timestamp
+- **No `exp`** - Token never expires (invalidated only on server restart or JWT secret change)
 
 ### Email Whitelisting
 
@@ -291,6 +356,7 @@ Database schema is automatically migrated on startup. Migration files are in `mi
 | `CONFIG_ADDRESS` | `--address` | `0.0.0.0:8000` | Server bind address |
 | `CONFIG_DATABASE_CONNECTION` | `--database-connection` | `sqlite://data/links.db?mode=rwc` | Database connection string |
 | `CONFIG_GOOGLE_CLIENT_ID` | `--google-client-id` | **Required** | Google OAuth Client ID |
+| `CONFIG_JWT_SECRET` | `--jwt-secret` | Auto-generated | JWT secret for signing internal tokens (min 16 chars, 32+ recommended) |
 | `CONFIG_ALLOWED_EMAILS` | `--allowed-emails` | `[]` (empty = all users) | Comma-separated email patterns |
 | `CONFIG_CORS_ORIGINS` | `--cors-origins` | `[]` (empty = all origins) | Comma-separated CORS allowed origins |
 
@@ -359,11 +425,22 @@ docker-compose up -d
 ## 🔒 Security Considerations
 
 1. **HTTPS Required** - Always use HTTPS in production
-2. **JWT Validation** - All tokens validated server-side with Google's public keys
-3. **Email Verification** - Only verified Google emails allowed
-4. **Key Caching** - Google public keys cached for 1 hour
-5. **Rate Limiting** - Consider adding rate limiting middleware for production
-6. **CORS** - Configure CORS appropriately for your domain
+2. **Two-Step Authentication**:
+   - Google JWT validated with Google's public keys
+   - Internal JWT signed with server's secret key
+3. **Token Security**:
+   - Google tokens: Short-lived, validated server-side
+   - Internal tokens: Non-expiring, signed with secret key
+   - Tokens invalidated on server restart or JWT secret change
+4. **JWT Secret Management**:
+   - Use strong secrets (32+ characters recommended)
+   - Auto-generated if not provided or too short
+   - Store securely, never commit to version control
+   - Change periodically in production
+5. **Email Verification** - Only verified Google emails allowed
+6. **Key Caching** - Google public keys cached for 1 hour
+7. **Rate Limiting** - Consider adding rate limiting middleware for production
+8. **CORS** - Configure CORS appropriately for your domain
 
 ## 📈 Performance
 

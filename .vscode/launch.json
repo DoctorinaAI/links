@@ -11,6 +11,7 @@
                 "run",
                 "dev"
             ],
+            "envFile": "${workspaceFolder}/frontend/.env",
             "cwd": "${workspaceFolder}/frontend",
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen",

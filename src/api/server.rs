@@ -6,7 +6,7 @@ use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use utoipa::OpenApi;
 
-use crate::api::{middleware, routes_private, routes_public, state::ApiState};
+use crate::api::{jwt_middleware, middleware, routes_private, routes_public, state::ApiState};
 
 use tokio::net::TcpListener;
 use tracing::info;
@@ -29,6 +29,7 @@ use tracing::info;
     paths(
         routes_public::get_health,
         routes_public::get_about,
+        routes_public::post_auth_google,
         routes_public::get_resolve_short_link,
         routes_public::post_click_short_link,
         routes_public::not_found,
@@ -43,6 +44,9 @@ use tracing::info;
     components(
         schemas(
             routes_public::AboutInfo,
+            routes_public::GoogleAuthRequest,
+            routes_public::GoogleAuthResponse,
+            routes_public::UserInfo,
             routes_public::ResolveResponse,
             routes_private::CreateShortLinkRequest,
             routes_private::ShortLinkResponse,
@@ -64,6 +68,7 @@ pub struct ServerConfig {
     pub fingerprint_service: Arc<crate::services::FingerprintService>,
     pub short_link_service: Arc<crate::services::ShortLinkService>,
     pub google_client_id: String,
+    pub jwt_secret: String,
     pub allowed_emails: Vec<String>,
     pub cors_origins: Vec<String>,
 }
@@ -101,9 +106,16 @@ impl Server {
         }
 
         // Initialize Google authentication
-        let auth_service =
-            crate::services::GoogleAuthService::new(self.config.google_client_id.clone());
+        let auth_service = Arc::new(crate::services::GoogleAuthService::new(
+            self.config.google_client_id.clone(),
+        ));
         info!("Google authentication enabled with built-in caching (keys: 1h, tokens: 5min)");
+
+        // Initialize JWT service for internal tokens
+        let jwt_service = Arc::new(crate::services::JwtService::new(
+            self.config.jwt_secret.clone(),
+        ));
+        info!("JWT service initialized (non-expiring tokens)");
 
         // Configure email filtering
         if self.config.allowed_emails.is_empty() {
@@ -116,7 +128,7 @@ impl Server {
         }
 
         let allowed_emails_list =
-            middleware::AllowedEmails::new(self.config.allowed_emails.clone());
+            jwt_middleware::AllowedEmails::new(self.config.allowed_emails.clone());
 
         // Configure CORS
         if self.config.cors_origins.is_empty() {
@@ -130,14 +142,20 @@ impl Server {
 
         // Build private routes with authentication middleware
         let private_routes = Self::private_routes().layer(axum::middleware::from_fn_with_state(
-            (auth_service, allowed_emails_list),
-            middleware::google_auth_with_email_check_middleware,
+            (jwt_service.clone(), allowed_emails_list),
+            jwt_middleware::internal_jwt_with_email_check_middleware,
         ));
 
         // Build API v1 routes (combines public and private)
         let api_v1 = Router::new()
             // Public routes (no authentication)
             .merge(Self::public_routes())
+            // Auth route with special state (needs google_auth and jwt_service)
+            .route(
+                "/auth/google",
+                post(routes_public::post_auth_google)
+                    .with_state((auth_service.clone(), jwt_service.clone())),
+            )
             // Private/Admin routes (with authentication if configured)
             .nest("/admin", private_routes)
             .with_state(ApiState {

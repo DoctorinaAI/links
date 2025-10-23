@@ -7,6 +7,32 @@ use tracing::{info /* debug, trace, warn, error */};
 use tracing_appender::rolling;
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
+/// Generate a cryptographically secure random JWT secret
+fn generate_random_secret() -> String {
+    use base64::Engine;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    let random_bytes: [u8; 48] = std::array::from_fn(|i| {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let pid = std::process::id() as u128;
+        let mix = nanos
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(counter as u128)
+            .wrapping_add(pid)
+            .wrapping_add(i as u128);
+        ((mix ^ (mix >> 32)) % 256) as u8
+    });
+
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(random_bytes)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse command line arguments - this will automatically handle --help
@@ -32,6 +58,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Spawning API task");
 
+    // Prepare JWT secret: generate random if not provided or too short
+    let jwt_secret = match &config.jwt_secret {
+        Some(secret) if secret.len() >= 16 => {
+            info!("Using provided JWT secret ({} chars)", secret.len());
+            secret.clone()
+        }
+        Some(secret) => {
+            tracing::warn!(
+                "Provided JWT secret too short ({} chars), generating random one",
+                secret.len()
+            );
+            let random_secret = generate_random_secret();
+            info!("Generated random JWT secret (tokens will be invalidated on restart)");
+            random_secret
+        }
+        None => {
+            let random_secret = generate_random_secret();
+            info!(
+                "No JWT secret provided, generated random one (tokens will be invalidated on restart)"
+            );
+            random_secret
+        }
+    };
+
     // Create services wrapped in Arc for efficient sharing
     let fingerprint_service = Arc::new(services::FingerprintService::new(db.clone()));
     let short_link_service = Arc::new(services::ShortLinkService::new(db.clone()));
@@ -51,6 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 fingerprint_service,
                 short_link_service,
                 google_client_id: config.google_client_id.clone(),
+                jwt_secret,
                 allowed_emails: config.allowed_emails.clone(),
                 cors_origins: config.cors_origins.clone(),
             });
