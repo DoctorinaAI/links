@@ -23,6 +23,7 @@ export const APP_CONFIG = {
   environment: import.meta.env.MODE || 'development',
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,
+  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
 } as const;
 
 /**

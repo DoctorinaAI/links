@@ -40,6 +40,7 @@ class HttpClient {
   private defaultTimeout: number;
   private requestInterceptors: Array<(config: RequestOptions) => RequestOptions | Promise<RequestOptions>> = [];
   private responseInterceptors: Array<(response: Response) => Response | Promise<Response>> = [];
+  private errorInterceptors: Array<(error: HttpError) => void | Promise<void>> = [];
 
   private constructor() {
     this.baseURL = API_CONFIG.baseURL;
@@ -69,6 +70,15 @@ class HttpClient {
     interceptor: (response: Response) => Response | Promise<Response>
   ): void {
     this.responseInterceptors.push(interceptor);
+  }
+
+  /**
+   * Add error interceptor (called on HTTP errors)
+   */
+  public addErrorInterceptor(
+    interceptor: (error: HttpError) => void | Promise<void>
+  ): void {
+    this.errorInterceptors.push(interceptor);
   }
 
   /**
@@ -183,8 +193,11 @@ class HttpClient {
         return this.requestWithRetry<T>(url, options, retries - 1, retryDelay * 2);
       }
 
-      // Re-throw HTTP errors
+      // Call error interceptors for HTTP errors
       if (error instanceof HttpError) {
+        for (const interceptor of this.errorInterceptors) {
+          await interceptor(error);
+        }
         throw error;
       }
 
