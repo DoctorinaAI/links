@@ -1,0 +1,7 @@
+/**
+ * Main Application Styles
+ * Import order: variables -> global -> components
+ */
+
+@import './variables.css';
+@import './global.css';
