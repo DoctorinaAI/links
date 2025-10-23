@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Links - URL Shortener Service">
+    <meta name="description" content="Links - Fast and simple URL shortener service">
     <meta name="theme-color" content="#667eea">
 
     <title>Links - URL Shortener</title>
@@ -12,28 +12,19 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
-    <!-- Preconnect to API -->
-    <link rel="preconnect" href="http://localhost:8000">
-
     <!-- Apple Touch Icon -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-    <!-- Manifest for PWA -->
-    <link rel="manifest" href="/manifest.json">
+    <!-- Styles -->
+    <link rel="stylesheet" href="/src/landing/landing.css">
 </head>
 
 <body>
-    <noscript>
-        <div style="text-align: center; padding: 2rem; font-family: sans-serif;">
-            <h1>JavaScript Required</h1>
-            <p>Please enable JavaScript to use this application.</p>
-        </div>
-    </noscript>
+    <!-- Landing page - vanilla TS, no frameworks -->
+    <div id="app"></div>
 
-    <div id="root"></div>
-
-    <!-- Main application script -->
-    <script type="module" src="/src/index.tsx"></script>
+    <!-- Landing page script -->
+    <script type="module" src="/src/landing/landing.ts"></script>
 </body>
 
 </html>

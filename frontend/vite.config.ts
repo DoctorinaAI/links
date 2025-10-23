@@ -1,3 +1,4 @@
+import { resolve } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
 import solidPlugin from 'vite-plugin-solid';
@@ -37,10 +38,15 @@ export default defineConfig(({ mode }) => ({
       },
     },
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        admin: resolve(__dirname, 'admin.html'),
+      },
       output: {
         manualChunks: {
-          vendor: ['solid-js'],
-          router: ['@solidjs/router'],
+          // Only chunk SolidJS for admin
+          'admin-vendor': ['solid-js'],
+          'admin-router': ['@solidjs/router'],
         },
       },
     },
