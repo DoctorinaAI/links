@@ -9,9 +9,18 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
-# macOS doesn't support lld, use default system linker
+# macOS ARM64 optimizations
 [target.aarch64-apple-darwin]
-# rustflags = ["-C", "link-arg=-fuse-ld=lld"]  # Commented out - lld not supported on macOS
+rustflags = [
+    "-C",
+    "target-cpu=native",        # Optimize for the current CPU
+    "-C",
+    "link-arg=-Wl,-dead_strip", # Remove unused code
+]
+
+# macOS x86_64 (Intel) optimizations
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "target-cpu=native", "-C", "link-arg=-Wl,-dead_strip"]
 
 # Build configuration
 [build]
@@ -40,24 +49,37 @@ protocol = "sparse"
 [alias]
 # Fast check without codegen
 c = "check"
+ca = "check --all-targets"
 
-# Build release
+# Build commands
+b = "build"
 br = "build --release"
-
-# Build small
 bs = "build --profile release-small"
-
-# Build fast
 bf = "build --profile release-fast"
 
-# Run tests with output
-t = "test -- --nocapture"
+# Run commands
+r = "run --bin server"
+rr = "run --release --bin server"
+rf = "run --profile release-fast --bin server"
 
-# Run with release profile
-rr = "run --release"
+# Test commands
+t = "test -- --nocapture"
+tt = "test -- --nocapture --test-threads=1"
+tc = "test --release -- --nocapture"
+
+# Development workflow
+dev = "watch -x 'run --bin server'"              # requires cargo-watch
+check-all = "check --all-targets --all-features"
 
 # Clean and build
-cb = "clean && cargo build --release"
+clean-all = "clean"
+cb = "clean && build --release"
 
-# Format and clippy
-fc = "fmt --all && cargo clippy --all-targets --all-features"
+# Lint and format
+fmt-check = "fmt --all -- --check"
+clippy-all = "clippy --all-targets --all-features -- -D warnings"
+fc = "fmt --all && clippy --all-targets --all-features"
+
+# Size analysis
+bloat = "bloat --release -n 20" # requires cargo-bloat
+tree = "tree --depth 3"         # Show dependency tree

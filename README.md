@@ -56,17 +56,20 @@ cargo build --profile release-fast --bin server
 
 ### Build Profiles
 
-The project includes three optimized build profiles:
+The project includes multiple optimized build profiles for different use cases:
 
-- **`--release`** (default) - Balanced optimization for size and speed
-- **`--profile release-small`** - Optimized for smallest binary size
-- **`--profile release-fast`** - Optimized for maximum runtime performance
+| Profile | Binary Size | Compile Time | Runtime Performance | Use Case |
+|---------|-------------|--------------|---------------------|----------|
+| `dev` (default) | ~19 MB | ⚡⚡⚡⚡⚡ Very Fast | ⭐⭐⭐ Good | Development & debugging |
+| `--release` | ~9 MB | ⚡⚡⚡⚡ Fast | ⭐⭐⭐⭐ Excellent | General production use |
+| `--profile release-small` | ~4.5 MB | ⚡⚡ Slow | ⭐⭐⭐ Good | Docker images, size-constrained environments |
+| `--profile release-fast` | ~7.5 MB | ⚡ Very Slow | ⭐⭐⭐⭐⭐ Maximum | High-performance production servers |
 
-All profiles include:
-- ✅ Full Link-Time Optimization (LTO)
-- ✅ Stripped debug symbols
-- ✅ Panic abort (no unwinding overhead)
-- ✅ Single codegen unit for better optimization
+**Profile configurations:**
+- **`dev`**: Basic optimizations (opt-level=1), fast incremental builds, debug symbols included
+- **`release`**: Balanced optimization, thin LTO, parallel codegen (16 units), stripped symbols
+- **`release-small`**: Maximum size reduction (opt-level="z"), fat LTO, single codegen unit
+- **`release-fast`**: Maximum performance (opt-level=3), fat LTO, overflow checks disabled
 
 ### Prerequisites
 

@@ -20,43 +20,62 @@ unused_variables = "allow"
 name = "server"
 path = "bin/server.rs"
 
-# cargo run --release
-# Default binary target
-# ~ 7092592 bytes or ~6.7 MB
+# cargo build (dev profile with some optimizations for faster runtime during development)
+[profile.dev]
+opt-level = 1      # Basic optimizations for reasonable performance
+debug = true       # Keep debug info
+incremental = true # Fast recompilation
+
+# cargo build --release
+# Default binary target - balanced optimization
+# ~ 6.8 MB
 [profile.release]
-opt-level = 3     # Maximum optimization
-lto = "fat"       # Full Link Time Optimization
-codegen-units = 1 # Better optimization, slower compile
-panic = "abort"   # Smaller binary, no unwinding
-strip = true      # Remove debug symbols
+opt-level = 3      # Maximum optimization
+lto = "thin"       # Thin LTO - good balance between speed and compile time
+codegen-units = 16 # Parallel codegen for faster builds
+panic = "abort"    # Smaller binary, no unwinding
+strip = true       # Remove debug symbols
+debug = false      # No debug info
 
 # cargo build --profile release-small
-# For smallest binary size (slower runtime)
-# ~ 4281344 bytes or ~4.1 MB
+# For smallest binary size (slightly slower runtime, slower compilation)
+# ~ 4.1 MB
 [profile.release-small]
 inherits = "release"
 opt-level = "z"      # Optimize for size
-lto = "fat"
-codegen-units = 1
+lto = "fat"          # Full LTO for maximum size reduction
+codegen-units = 1    # Single codegen unit for better optimization
 panic = "abort"
 strip = true
 
 # cargo build --profile release-fast
-# For fastest runtime (larger binary)
-# ~ 7092592 bytes or ~6.7 MB
+# For fastest runtime (larger binary, much slower compilation)
+# Production-ready with maximum performance
 [profile.release-fast]
 inherits = "release"
-opt-level = 3
-lto = "fat"
-codegen-units = 1
+opt-level = 3        # Maximum optimization level
+lto = "fat"          # Full LTO for maximum performance
+codegen-units = 1    # Single unit for best optimization
 panic = "abort"
 strip = true
+# Additional performance flags
+overflow-checks = false  # Disable overflow checks in hot paths
+debug-assertions = false
 
 [dependencies]
 
 # Async runtime
 futures = "0.3.31"
-tokio = { version = "1.48.0", features = ["full"] }
+tokio = { version = "1.48.0", features = [
+    "rt-multi-thread",
+    "macros",
+    "sync",
+    "time",
+    "fs",
+    "io-util",
+    "net",
+    "signal",
+] }
 
 # Utilities
 anyhow = "1.0.100"
@@ -86,9 +105,22 @@ jsonwebtoken = "9.3.0"
 base64 = "0.22.1"
 
 # HTTP server (for API)
-axum = "0.8.6"
-tower = "0.5.2"
-tower-http = { version = "0.6.6", features = [
+axum = { version = "0.8.6", default-features = false, features = [
+    "http1",
+    "http2",
+    "json",
+    "matched-path",
+    "original-uri",
+    "tokio",
+    "tower-log",
+    "tracing",
+] }
+tower = { version = "0.5.2", default-features = false, features = [
+    "util",
+    "timeout",
+    "limit",
+] }
+tower-http = { version = "0.6.6", default-features = false, features = [
     "cors",
     "trace",
     "limit",
