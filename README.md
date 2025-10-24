@@ -203,6 +203,8 @@ OpenAPI spec available at: `http://localhost:8000/api-docs/openapi.json`
 | `POST` | `/auth/google` | Exchange Google JWT for internal token | ❌ |
 | `GET` | `/link/:slug` | Resolve link | ❌ |
 | `POST` | `/click/:slug` | Track click event | ❌ |
+| `PUT` | `/analytics` | Create fingerprint for tracking | ❌ |
+| `POST` | `/analytics` | Get parameters for fingerprint | ❌ |
 
 ### Admin Routes (`/api/v1/admin`)
 

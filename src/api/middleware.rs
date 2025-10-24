@@ -749,3 +749,134 @@ pub async fn ip_extraction_middleware(
 
     next.run(request).await
 }
+
+/// Middleware for converting all HTTP errors into API error format
+/// This middleware catches error responses (4xx, 5xx) with empty or plain-text bodies
+/// and converts them into our standardized API error response format
+pub async fn json_error_middleware(request: Request, next: Next) -> Response {
+    let response = next.run(request).await;
+
+    let status = response.status();
+
+    // Only process error responses (4xx, 5xx)
+    if !status.is_client_error() && !status.is_server_error() {
+        return response;
+    }
+
+    // Try to read the response body
+    let (parts, body) = response.into_parts();
+
+    // Collect the body bytes
+    let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            // If we can't read the body, return empty error
+            let api_error = ApiResult::<()>::error_with_status(
+                "INTERNAL_ERROR",
+                "Failed to process response",
+                StatusCode::INTERNAL_SERVER_ERROR,
+            );
+            return api_error.into_response();
+        }
+    };
+
+    // Check if body is empty or not JSON
+    let body_str = String::from_utf8_lossy(&body_bytes);
+    let is_empty = body_bytes.is_empty();
+    let is_json = body_str.trim().starts_with('{');
+
+    // If body is already valid JSON, return as-is
+    if !is_empty && is_json {
+        return Response::from_parts(parts, axum::body::Body::from(body_bytes));
+    }
+
+    // Convert to API error format
+    let (code, message) = if is_empty {
+        // Empty body - use status code to determine error
+        match status {
+            StatusCode::NOT_FOUND => (
+                "NOT_FOUND",
+                "The requested resource was not found".to_string(),
+            ),
+            StatusCode::METHOD_NOT_ALLOWED => (
+                "METHOD_NOT_ALLOWED",
+                "HTTP method not allowed for this endpoint".to_string(),
+            ),
+            StatusCode::UNAUTHORIZED => ("UNAUTHORIZED", "Authentication required".to_string()),
+            StatusCode::FORBIDDEN => ("FORBIDDEN", "Access denied".to_string()),
+            StatusCode::BAD_REQUEST => ("BAD_REQUEST", "Invalid request".to_string()),
+            StatusCode::UNPROCESSABLE_ENTITY => (
+                "UNPROCESSABLE_ENTITY",
+                "Unable to process request".to_string(),
+            ),
+            StatusCode::TOO_MANY_REQUESTS => {
+                ("RATE_LIMIT_EXCEEDED", "Too many requests".to_string())
+            }
+            StatusCode::REQUEST_TIMEOUT => ("REQUEST_TIMEOUT", "Request timed out".to_string()),
+            StatusCode::INTERNAL_SERVER_ERROR => {
+                ("INTERNAL_SERVER_ERROR", "Internal server error".to_string())
+            }
+            StatusCode::SERVICE_UNAVAILABLE => (
+                "SERVICE_UNAVAILABLE",
+                "Service temporarily unavailable".to_string(),
+            ),
+            _ => (
+                "ERROR",
+                format!("Request failed with status {}", status.as_u16()),
+            ),
+        }
+    } else if body_str.contains("Failed to deserialize")
+        || body_str.contains("missing field")
+        || body_str.contains("invalid type")
+        || body_str.contains("expected")
+        || body_str.contains("EOF while parsing")
+        || body_str.contains("Content-Type")
+    {
+        // Plain text body with Axum error - extract meaningful info
+        if body_str.contains("missing field") {
+            // Extract field name from "missing field `fieldname`"
+            let field = body_str
+                .split("missing field `")
+                .nth(1)
+                .and_then(|s| s.split('`').next())
+                .unwrap_or("unknown");
+            (
+                "MISSING_FIELD",
+                format!("Required field is missing: {}", field),
+            )
+        } else if body_str.contains("invalid type") {
+            (
+                "INVALID_TYPE",
+                "Invalid field type in request body".to_string(),
+            )
+        } else if body_str.contains("EOF while parsing") {
+            (
+                "INVALID_JSON",
+                "Invalid JSON: unexpected end of input".to_string(),
+            )
+        } else if body_str.contains("expected") {
+            ("INVALID_JSON", "Invalid JSON syntax".to_string())
+        } else if body_str.contains("duplicate field") {
+            let field = body_str
+                .split("duplicate field `")
+                .nth(1)
+                .and_then(|s| s.split('`').next())
+                .unwrap_or("unknown");
+            ("DUPLICATE_FIELD", format!("Duplicate field: {}", field))
+        } else if body_str.contains("Content-Type") {
+            (
+                "MISSING_CONTENT_TYPE",
+                "Request must have Content-Type: application/json header".to_string(),
+            )
+        } else {
+            ("INVALID_REQUEST", body_str.trim().to_string())
+        }
+    } else {
+        // Generic plain text error
+        ("ERROR", body_str.trim().to_string())
+    };
+
+    // Create and return API error response
+    let api_error = ApiResult::<()>::error_with_status(code, message, status);
+    api_error.into_response()
+}

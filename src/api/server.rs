@@ -188,34 +188,36 @@ impl Server {
             .layer(axum::middleware::from_fn(
                 middleware::panic_recovery_middleware,
             ))
-            // 2. Logging (logs all requests with timing, IP, user-agent)
+            // 2. JSON error conversion (converts Axum JSON errors to API format)
+            .layer(axum::middleware::from_fn(middleware::json_error_middleware))
+            // 3. Logging (logs all requests with timing, IP, user-agent)
             .layer(axum::middleware::from_fn(middleware::logging_middleware))
-            // 3. Request timeout (30s limit to prevent hanging requests)
+            // 4. Request timeout (30s limit to prevent hanging requests)
             .layer(axum::middleware::from_fn(middleware::timeout_middleware))
-            // 4. Cache control headers (no-cache for API, long cache for static)
+            // 5. Cache control headers (no-cache for API, long cache for static)
             .layer(axum::middleware::from_fn(
                 middleware::cache_control_middleware,
             ))
-            // 5. Body size tracking (X-Request-Size header)
+            // 6. Body size tracking (X-Request-Size header)
             .layer(axum::middleware::from_fn(middleware::body_size_middleware))
-            // 6. Request ID generation (X-Request-ID for tracing)
+            // 7. Request ID generation (X-Request-ID for tracing)
             .layer(axum::middleware::from_fn(middleware::request_id_middleware))
-            // 7. Server-Timing headers (detailed performance metrics)
+            // 8. Server-Timing headers (detailed performance metrics)
             .layer(axum::middleware::from_fn(
                 middleware::server_timing_middleware,
             ))
-            // 8. Security headers (X-Frame-Options, CSP, XSS protection, etc.)
+            // 9. Security headers (X-Frame-Options, CSP, XSS protection, etc.)
             .layer(axum::middleware::from_fn(middleware::security_middleware))
-            // 9. Request validation (URI length, HTTP method checks)
+            // 10. Request validation (URI length, HTTP method checks)
             .layer(axum::middleware::from_fn(
                 middleware::request_validation_middleware,
             ))
-            // 10. Rate limiting (100 req/min per IP - DDoS protection)
+            // 11. Rate limiting (100 req/min per IP - DDoS protection)
             .layer(axum::middleware::from_fn_with_state(
                 rate_limit_state,
                 middleware::rate_limit_middleware,
             ))
-            // 11. CORS (outermost - cross-origin resource sharing)
+            // 12. CORS (outermost - cross-origin resource sharing)
             .layer(middleware::create_cors_layer(
                 self.config.cors_origins.clone(),
             ));
