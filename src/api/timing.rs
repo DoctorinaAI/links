@@ -2,6 +2,7 @@ use axum::http::HeaderValue;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use tracing::Span;
 
 /// Performance timing tracker for Server-Timing header
 ///
@@ -9,15 +10,17 @@ use std::time::Instant;
 /// It's designed to be stored in request extensions and accessed throughout
 /// the request lifecycle.
 ///
+/// Uses tracing spans under the hood for efficient, lock-free measurements.
+///
 /// # Example
 /// ```ignore
 /// let metrics = RequestMetrics::new();
 ///
-/// let _guard = metrics.measure("database");
-/// // Database operations...
-/// drop(_guard); // Measurement stops here
+/// metrics.measure_fn("database", || {
+///     // Database operations...
+/// });
 ///
-/// let timings = metrics.build_header();
+/// let header = metrics.build_header();
 /// ```
 #[derive(Clone)]
 pub struct RequestMetrics {
@@ -50,16 +53,17 @@ impl RequestMetrics {
         let name = name.into();
         let start = Instant::now();
 
+        // Create tracing span for structured logging
+        let span = tracing::debug_span!("metric", name = %name);
+
         // Add new sample to the metric
         {
+            let _enter = span.enter();
             let mut metrics = self.metrics.lock().unwrap();
-            metrics
-                .entry(name.clone())
-                .or_insert_with(Vec::new)
-                .push(MetricSample {
-                    start,
-                    duration_us: None,
-                });
+            metrics.entry(name.clone()).or_default().push(MetricSample {
+                start,
+                duration_us: None,
+            });
         }
 
         MetricGuard {
@@ -67,6 +71,7 @@ impl RequestMetrics {
             metrics: Arc::clone(&self.metrics),
             start,
             stopped: false,
+            _span: span,
         }
     }
 
@@ -110,13 +115,10 @@ impl RequestMetrics {
     #[allow(dead_code)]
     pub fn record(&self, name: impl Into<String>, duration_us: u128) {
         let mut metrics = self.metrics.lock().unwrap();
-        metrics
-            .entry(name.into())
-            .or_insert_with(Vec::new)
-            .push(MetricSample {
-                start: Instant::now(), // Dummy value
-                duration_us: Some(duration_us),
-            });
+        metrics.entry(name.into()).or_default().push(MetricSample {
+            start: Instant::now(), // Dummy value
+            duration_us: Some(duration_us),
+        });
     }
 
     /// Build the Server-Timing header value from collected metrics
@@ -195,6 +197,7 @@ pub struct MetricGuard {
     metrics: Arc<Mutex<HashMap<String, Vec<MetricSample>>>>,
     start: Instant,
     stopped: bool,
+    _span: Span,
 }
 
 impl MetricGuard {
