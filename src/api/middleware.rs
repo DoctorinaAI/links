@@ -730,3 +730,22 @@ pub async fn timeout_middleware(request: Request, next: Next) -> Result<Response
         }
     }
 }
+
+/// Middleware for extracting client IP address and injecting into request extensions
+/// This extracts the real IP from proxy headers (X-Forwarded-For, etc.) and makes it
+/// available to handlers via the ClientIp extension
+pub async fn ip_extraction_middleware(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    mut request: Request,
+    next: Next,
+) -> Response {
+    use crate::api::routes_analytics::ClientIp;
+
+    // Extract real IP using the existing helper function
+    let client_ip = get_real_ip(&request, addr);
+
+    // Inject into request extensions for handlers to use
+    request.extensions_mut().insert(ClientIp(client_ip));
+
+    next.run(request).await
+}

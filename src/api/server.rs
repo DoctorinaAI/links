@@ -6,7 +6,9 @@ use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use utoipa::OpenApi;
 
-use crate::api::{jwt_middleware, middleware, routes_private, routes_public, state::ApiState};
+use crate::api::{
+    jwt_middleware, middleware, routes_analytics, routes_private, routes_public, state::ApiState,
+};
 
 use tokio::net::TcpListener;
 use tracing::info;
@@ -33,6 +35,8 @@ use tracing::info;
         routes_public::get_resolve_short_link,
         routes_public::post_click_short_link,
         routes_public::not_found,
+        routes_analytics::put_store_analytics,
+        routes_analytics::post_retrieve_analytics,
         routes_private::get_check,
         routes_private::post_create_short_link,
         routes_private::get_list_short_links,
@@ -48,10 +52,15 @@ use tracing::info;
             routes_public::GoogleAuthResponse,
             routes_public::UserInfo,
             routes_public::ResolveResponse,
+            routes_analytics::StoreAnalyticsRequest,
+            routes_analytics::StoreAnalyticsResponse,
+            routes_analytics::RetrieveAnalyticsRequest,
+            routes_analytics::RetrieveAnalyticsResponse,
             routes_private::CreateShortLinkRequest,
             routes_private::ShortLinkResponse,
             routes_private::ShortLinksListResponse,
             routes_private::ClickStatsResponse,
+            crate::models::Platform,
             crate::api::response::ApiError,
         )
     ),
@@ -244,6 +253,16 @@ impl Server {
             // Public short link routes
             .route("/link/{slug}", get(routes_public::get_resolve_short_link))
             .route("/click/{slug}", post(routes_public::post_click_short_link))
+            // Analytics routes (require IP extraction middleware)
+            .route("/analytics", put(routes_analytics::put_store_analytics))
+            .route(
+                "/analytics",
+                post(routes_analytics::post_retrieve_analytics),
+            )
+            // Add IP extraction middleware for analytics routes
+            .layer(axum::middleware::from_fn(
+                middleware::ip_extraction_middleware,
+            ))
     }
 
     fn private_routes() -> Router<ApiState> {
