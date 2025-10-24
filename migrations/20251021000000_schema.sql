@@ -26,4 +26,4 @@ CREATE TABLE IF NOT EXISTS clicks (
 -- Create indexes for analytics queries
 CREATE INDEX IF NOT EXISTS idx_clicks_slug ON clicks(slug);
 --CREATE INDEX IF NOT EXISTS idx_clicks_clicked_at ON clicks(clicked_at);
---CREATE INDEX IF NOT EXISTS idx_clicks_slug_clicked_at ON clicks(slug, clicked_at);
+CREATE INDEX IF NOT EXISTS idx_clicks_slug_clicked_at ON clicks(slug, clicked_at);
