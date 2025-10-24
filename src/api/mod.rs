@@ -6,5 +6,6 @@ pub(crate) mod response;
 pub(crate) mod routes_private;
 pub(crate) mod routes_public;
 pub(crate) mod state;
+pub(crate) mod timing;
 
 pub use server::{Server, ServerConfig};

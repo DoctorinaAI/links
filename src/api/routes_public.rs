@@ -1,8 +1,8 @@
-use crate::api::{response::ApiResult, state::ApiState};
+use crate::api::{response::ApiResult, state::ApiState, timing::RequestMetrics};
 use crate::config::{AUTHOR, DESCRIPTION, HOMEPAGE, LICENSE, NAME, REPOSITORY, VERSION};
 use crate::services::{GoogleAuthService, JwtService};
 use axum::{
-    Json,
+    Extension, Json,
     extract::{Path, State},
     http::StatusCode,
 };
@@ -97,10 +97,15 @@ pub struct UserInfo {
 )]
 pub async fn post_auth_google(
     State((google_auth, jwt_service)): State<(Arc<GoogleAuthService>, Arc<JwtService>)>,
+    Extension(metrics): Extension<RequestMetrics>,
     Json(payload): Json<GoogleAuthRequest>,
 ) -> ApiResult<GoogleAuthResponse> {
     // Validate Google JWT
-    let google_claims = match google_auth.validate_token(&payload.token).await {
+    let google_claims = metrics
+        .measure_async("google_auth", || google_auth.validate_token(&payload.token))
+        .await;
+
+    let google_claims = match google_claims {
         Ok(claims) => claims,
         Err(e) => {
             return ApiResult::error_with_status(
@@ -111,31 +116,33 @@ pub async fn post_auth_google(
         }
     };
 
-    // Create internal claims from Google claims
-    let internal_claims = JwtService::from_google_claims(&google_claims);
+    // Create internal claims and generate JWT
+    metrics.measure_fn("jwt_generation", || {
+        let internal_claims = JwtService::from_google_claims(&google_claims);
 
-    // Generate our internal JWT (non-expiring)
-    let token = match jwt_service.create_token(internal_claims.clone()) {
-        Ok(t) => t,
-        Err(e) => {
-            return ApiResult::error_with_status(
-                "TOKEN_GENERATION_FAILED",
-                format!("Failed to generate token: {}", e),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            );
-        }
-    };
+        // Generate our internal JWT (non-expiring)
+        let token = match jwt_service.create_token(internal_claims.clone()) {
+            Ok(t) => t,
+            Err(e) => {
+                return ApiResult::error_with_status(
+                    "TOKEN_GENERATION_FAILED",
+                    format!("Failed to generate token: {}", e),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                );
+            }
+        };
 
-    // Build user info response
-    let user = UserInfo {
-        id: internal_claims.sub,
-        provider: internal_claims.provider,
-        email: internal_claims.email,
-        name: internal_claims.name,
-        picture: internal_claims.picture,
-    };
+        // Build user info response
+        let user = UserInfo {
+            id: internal_claims.sub,
+            provider: internal_claims.provider,
+            email: internal_claims.email,
+            name: internal_claims.name,
+            picture: internal_claims.picture,
+        };
 
-    ApiResult::success(GoogleAuthResponse { token, user })
+        ApiResult::success(GoogleAuthResponse { token, user })
+    })
 }
 
 #[derive(Serialize, ToSchema)]
@@ -205,12 +212,21 @@ pub struct ResolveResponse {
 )]
 pub async fn get_resolve_short_link(
     State(state): State<ApiState>,
+    Extension(metrics): Extension<RequestMetrics>,
     Path(slug): Path<String>,
 ) -> ApiResult<ResolveResponse> {
-    match state.short_link_service.resolve_short_link(&slug).await {
-        Ok(Some(link)) => ApiResult::success(ResolveResponse {
-            slug: link.slug,
-            params: link.params,
+    let result = metrics
+        .measure_async("database", || {
+            state.short_link_service.resolve_short_link(&slug)
+        })
+        .await;
+
+    match result {
+        Ok(Some(link)) => metrics.measure_fn("json_encode", || {
+            ApiResult::success(ResolveResponse {
+                slug: link.slug,
+                params: link.params,
+            })
         }),
         Ok(None) => ApiResult::error_with_status(
             "NOT_FOUND",
@@ -241,9 +257,16 @@ pub async fn get_resolve_short_link(
 )]
 pub async fn post_click_short_link(
     State(state): State<ApiState>,
+    Extension(metrics): Extension<RequestMetrics>,
     Path(slug): Path<String>,
 ) -> ApiResult<()> {
-    match state.short_link_service.click_short_link(&slug).await {
+    let result = metrics
+        .measure_async("database", || {
+            state.short_link_service.click_short_link(&slug)
+        })
+        .await;
+
+    match result {
         Ok(_) => ApiResult::success(()),
         Err(e) => ApiResult::error_with_status(
             "CLICK_FAILED",

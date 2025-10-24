@@ -332,39 +332,28 @@ pub async fn metrics_middleware(request: Request, next: Next) -> Response {
 
 /// Middleware for adding detailed Server-Timing headers with component breakdown
 /// This provides more granular timing information for debugging and optimization
-pub async fn server_timing_middleware(request: Request, next: Next) -> Response {
-    let total_start = Instant::now();
+///
+/// Uses RequestMetrics from request extensions to collect timing data from handlers
+pub async fn server_timing_middleware(mut request: Request, next: Next) -> Response {
+    use crate::api::timing::RequestMetrics;
 
-    // Measure middleware overhead
-    let middleware_start = Instant::now();
+    // Initialize metrics tracker and inject into request extensions
+    let metrics = RequestMetrics::new();
+    request.extensions_mut().insert(metrics.clone());
 
-    // Run the handler
+    // Measure total request time
+    let _total_guard = metrics.measure("total");
+
+    // Measure handler execution time
+    let handler_guard = metrics.measure("handler");
     let mut response = next.run(request).await;
+    drop(handler_guard);
 
-    let handler_duration = middleware_start.elapsed();
-    let total_duration = total_start.elapsed();
-
-    // Calculate middleware overhead (time before and after handler)
-    let middleware_overhead = total_duration.saturating_sub(handler_duration);
-
-    // Build Server-Timing header with multiple metrics
-    // Format: metric1;dur=ms, metric2;dur=ms;desc="description"
-    let timing_metrics = [
-        format!("total;dur={}", total_duration.as_micros() as f64 / 1000.0),
-        format!(
-            "handler;dur={};desc=\"Handler execution\"",
-            handler_duration.as_micros() as f64 / 1000.0
-        ),
-        format!(
-            "middleware;dur={};desc=\"Middleware overhead\"",
-            middleware_overhead.as_micros() as f64 / 1000.0
-        ),
-    ];
-
-    let server_timing = timing_metrics.join(", ");
-
-    if let Ok(timing_value) = HeaderValue::from_str(&server_timing) {
-        response.headers_mut().insert("Server-Timing", timing_value);
+    // Build and attach Server-Timing header from collected metrics
+    if let Some(timing_header) = metrics.build_header() {
+        response
+            .headers_mut()
+            .insert("Server-Timing", timing_header);
     }
 
     response

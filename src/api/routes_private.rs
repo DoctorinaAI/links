@@ -1,7 +1,7 @@
-use crate::api::{response::ApiResult, state::ApiState};
+use crate::api::{response::ApiResult, state::ApiState, timing::RequestMetrics};
 use crate::models::ShortLink;
 use axum::{
-    Json,
+    Extension, Json,
     extract::{Path, State},
     http::StatusCode,
 };
@@ -17,9 +17,11 @@ use utoipa::ToSchema;
         (status = 200, description = "Authentication successful")
     )
 )]
-pub async fn get_check() -> ApiResult<String> {
-    let version = env!("CARGO_PKG_VERSION");
-    ApiResult::success(format!("Current app version: {}", version))
+pub async fn get_check(Extension(metrics): Extension<RequestMetrics>) -> ApiResult<String> {
+    metrics.measure_fn("version_check", || {
+        let version = env!("CARGO_PKG_VERSION");
+        ApiResult::success(format!("Current app version: {}", version))
+    })
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -106,6 +108,7 @@ pub struct ClickStatsResponse {
 )]
 pub async fn post_create_short_link(
     State(state): State<ApiState>,
+    Extension(metrics): Extension<RequestMetrics>,
     Json(payload): Json<CreateShortLinkRequest>,
 ) -> ApiResult<ShortLinkResponse> {
     let short_link = ShortLink {
@@ -118,8 +121,14 @@ pub async fn post_create_short_link(
         updated_at: chrono::Utc::now(),
     };
 
-    match state.short_link_service.create_short_link(short_link).await {
-        Ok(link) => ApiResult::success(link.into()),
+    let result = metrics
+        .measure_async("database", || {
+            state.short_link_service.create_short_link(short_link)
+        })
+        .await;
+
+    match result {
+        Ok(link) => metrics.measure_fn("json_encode", || ApiResult::success(link.into())),
         Err(e) => ApiResult::error_with_status(
             "CREATE_FAILED",
             format!("Failed to create short link: {}", e),
@@ -140,16 +149,21 @@ pub async fn post_create_short_link(
 )]
 pub async fn get_list_short_links(
     State(state): State<ApiState>,
+    Extension(metrics): Extension<RequestMetrics>,
 ) -> ApiResult<ShortLinksListResponse> {
-    match state.short_link_service.list_short_links().await {
-        Ok(links) => {
+    let links = metrics
+        .measure_async("database", || state.short_link_service.list_short_links())
+        .await;
+
+    match links {
+        Ok(links) => metrics.measure_fn("response_processing", || {
             let count = links.len();
             let response = ShortLinksListResponse {
                 links: links.into_iter().map(|l| l.into()).collect(),
                 count,
             };
             ApiResult::success(response)
-        }
+        }),
         Err(e) => ApiResult::error_with_status(
             "LIST_FAILED",
             format!("Failed to list links: {}", e),
@@ -174,10 +188,17 @@ pub async fn get_list_short_links(
 )]
 pub async fn get_short_link(
     State(state): State<ApiState>,
+    Extension(metrics): Extension<RequestMetrics>,
     Path(slug): Path<String>,
 ) -> ApiResult<ShortLinkResponse> {
-    match state.short_link_service.resolve_short_link(&slug).await {
-        Ok(Some(link)) => ApiResult::success(link.into()),
+    let result = metrics
+        .measure_async("database", || {
+            state.short_link_service.resolve_short_link(&slug)
+        })
+        .await;
+
+    match result {
+        Ok(Some(link)) => metrics.measure_fn("json_encode", || ApiResult::success(link.into())),
         Ok(None) => ApiResult::error_with_status(
             "NOT_FOUND",
             format!("Link '{}' not found", slug),
@@ -208,6 +229,7 @@ pub async fn get_short_link(
 )]
 pub async fn put_update_short_link(
     State(state): State<ApiState>,
+    Extension(metrics): Extension<RequestMetrics>,
     Path(slug): Path<String>,
     Json(payload): Json<CreateShortLinkRequest>,
 ) -> ApiResult<ShortLinkResponse> {
@@ -221,12 +243,14 @@ pub async fn put_update_short_link(
         updated_at: chrono::Utc::now(),
     };
 
-    match state
-        .short_link_service
-        .update_short_link(&slug, update)
-        .await
-    {
-        Ok(link) => ApiResult::success(link.into()),
+    let result = metrics
+        .measure_async("database", || {
+            state.short_link_service.update_short_link(&slug, update)
+        })
+        .await;
+
+    match result {
+        Ok(link) => metrics.measure_fn("json_encode", || ApiResult::success(link.into())),
         Err(e) => {
             if e.to_string().contains("not found") {
                 ApiResult::error_with_status(
@@ -261,9 +285,16 @@ pub async fn put_update_short_link(
 )]
 pub async fn delete_short_link(
     State(state): State<ApiState>,
+    Extension(metrics): Extension<RequestMetrics>,
     Path(slug): Path<String>,
 ) -> ApiResult<()> {
-    match state.short_link_service.delete_short_link(&slug).await {
+    let result = metrics
+        .measure_async("database", || {
+            state.short_link_service.delete_short_link(&slug)
+        })
+        .await;
+
+    match result {
         Ok(_) => ApiResult::success(()),
         Err(e) => {
             if e.to_string().contains("not found") {
@@ -298,9 +329,16 @@ pub async fn delete_short_link(
 )]
 pub async fn get_click_stats(
     State(state): State<ApiState>,
+    Extension(metrics): Extension<RequestMetrics>,
     Path(slug): Path<String>,
 ) -> ApiResult<ClickStatsResponse> {
-    let total_clicks = match state.short_link_service.get_click_count(&slug).await {
+    let total_clicks = metrics
+        .measure_async("database_count", || {
+            state.short_link_service.get_click_count(&slug)
+        })
+        .await;
+
+    let total_clicks = match total_clicks {
         Ok(count) => count,
         Err(e) => {
             return ApiResult::error_with_status(
@@ -311,11 +349,13 @@ pub async fn get_click_stats(
         }
     };
 
-    let recent_clicks = match state
-        .short_link_service
-        .get_click_stats(&slug, Some(10))
-        .await
-    {
+    let recent_clicks = metrics
+        .measure_async("database_stats", || {
+            state.short_link_service.get_click_stats(&slug, Some(10))
+        })
+        .await;
+
+    let recent_clicks = match recent_clicks {
         Ok(clicks) => clicks.into_iter().map(|c| c.to_rfc3339()).collect(),
         Err(e) => {
             return ApiResult::error_with_status(
