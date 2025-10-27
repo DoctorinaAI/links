@@ -18,7 +18,7 @@ use crate::services::GoogleAuthService;
 
 /// Create a CORS layer with configurable allowed origins
 ///
-/// If origins is empty, creates a permissive CORS layer allowing all origins.
+/// If origins is empty, contains "*", or contains empty strings, creates a permissive CORS layer allowing all origins.
 /// Otherwise, restricts CORS to the specified origins.
 /// All methods and headers are always allowed.
 ///
@@ -26,12 +26,19 @@ use crate::services::GoogleAuthService;
 /// ```ignore
 /// // Allow all origins
 /// let cors = create_cors_layer(vec![]);
+/// let cors = create_cors_layer(vec!["*".to_string()]);
 ///
 /// // Restrict to specific origins
 /// let cors = create_cors_layer(vec!["https://example.com".to_string(), "https://app.example.com".to_string()]);
 /// ```
 pub fn create_cors_layer(origins: Vec<String>) -> CorsLayer {
-    if origins.is_empty() {
+    // Check if we should use permissive mode
+    let use_permissive = origins.is_empty()
+        || origins
+            .iter()
+            .any(|o| o.trim().is_empty() || o.trim() == "*");
+
+    if use_permissive {
         // Permissive mode: allow all origins
         CorsLayer::permissive()
     } else {
