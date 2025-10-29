@@ -524,7 +524,7 @@ links/
 │   ├── models/                # Data models
 │   └── services/              # Business logic
 ├── migrations/                # SQL migrations
-├── public/                    # Frontend assets (generated)
+├── frontend/                  # Frontend
 ├── logs/                      # Log files (generated)
 ├── data/                      # SQLite database (generated)
 └── Cargo.toml                 # Rust dependencies
